@@ -315,3 +315,71 @@ export interface TeamProfileData {
   editionStats: TeamEditionStats | null;
   recentMatches: Match[];
 }
+
+// ─── Ranking ──────────────────────────────────────────────────────────────────
+
+export interface RankingRow {
+  team_id: string;
+  team_name: string;
+  logo_url: string | null;
+  total_points: number;
+}
+
+// ─── Notícias ─────────────────────────────────────────────────────────────────
+
+export interface NewsArticleListItem {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  cover_url: string | null;
+  published_at: string | null;
+  competition_ids: string[];
+}
+
+export interface NewsArticleDetail {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  cover_url: string | null;
+  published_at: string | null;
+  body: object | null;
+  tags_teams: { id: string; full_name: string; short_name: string | null; logo_url: string | null }[];
+  tags_competitions: { id: string; full_name: string; short_name: string | null }[];
+}
+
+// ─── Hall da Fama ─────────────────────────────────────────────────────────────
+
+export interface HallEntry {
+  id: string;
+  name: string;
+  photo_url: string | null;
+  value: number;
+  team_name?: string | null;
+  team_logo?: string | null;
+}
+
+export interface HallCategory {
+  key: string;
+  label: string;
+  section: "athletes" | "teams" | "staff";
+  entries: HallEntry[];
+}
+
+export interface HallFilterOptions {
+  competitions: { id: string; full_name: string; short_name: string | null; gender: string | null }[];
+  editions: { id: string; competition_id: string; season_name: string }[];
+  teams: { id: string; full_name: string }[];
+}
+
+export interface HallSectionData {
+  athletes: HallCategory[];
+  teams: HallCategory[];
+  staff: HallCategory[];
+}
+
+export interface HallFilters {
+  competitionId: string;
+  editionId: string;
+  teamId: string;
+  gender: string;
+}

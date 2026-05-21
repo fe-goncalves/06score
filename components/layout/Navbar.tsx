@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { href: "/times", label: "TIMES" },
   { href: "/atletas", label: "ATLETAS" },
   { href: "/ranking", label: "RANKING" },
-  { href: "/noticias", label: "NOTÍCIAS" },
+  { href: "/news", label: "NOTÍCIAS" },
   { href: "/hall-da-fama", label: "HALL DA FAMA" },
 ];
 
