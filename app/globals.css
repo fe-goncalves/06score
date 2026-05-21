@@ -1,26 +1,52 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --card: #141414;
+  --card-border: rgba(255, 255, 255, 0.06);
+  --navbar: #0d0d0d;
+  --color-brand: #ff6b00;
+  --color-secondary: #888888;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-brand: var(--color-brand);
+  --color-secondary: var(--color-secondary);
+  --color-card: var(--card);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.section-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--foreground);
+}
+
+.card-base {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 0.75rem;
+  transition: border-color 0.25s ease;
+}
+
+.card-base:hover {
+  border-color: var(--color-brand);
+}
+
+.snap-x-mandatory {
+  scroll-snap-type: x mandatory;
+}
+
+.snap-start {
+  scroll-snap-align: start;
 }
