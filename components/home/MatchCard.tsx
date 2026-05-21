@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { OrgImage } from "@/components/ui/OrgImage";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -25,7 +26,8 @@ export function MatchCard({ match }: MatchCardProps) {
   const teamB = match.teams_b;
 
   return (
-    <Card className="snap-start min-w-[280px] shrink-0 p-4 sm:min-w-[320px]">
+    <Link href={`/jogos/${match.id}`} className="block snap-start min-w-[280px] shrink-0 sm:min-w-[320px]">
+    <Card className="h-full p-4">
       <div className="mb-3 flex items-start justify-between gap-2">
         <p className="line-clamp-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-brand)]">
           {getCompetitionName(match)}
@@ -79,5 +81,6 @@ export function MatchCard({ match }: MatchCardProps) {
         </div>
       </div>
     </Card>
+    </Link>
   );
 }

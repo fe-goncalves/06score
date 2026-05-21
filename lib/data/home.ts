@@ -1,3 +1,4 @@
+import { getPhaseIdsForOrg } from "@/lib/data/shared";
 import { getSupabase } from "@/lib/supabase";
 import type {
   AthleteStatLeader,
@@ -6,58 +7,10 @@ import type {
   Match,
   NewsArticle,
 } from "@/lib/types";
-
-const MATCH_SELECT = `
-  id,
-  match_date,
-  match_time,
-  status,
-  score_a,
-  score_b,
-  teams_a:teams!matches_team_a_id_fkey(full_name, short_name, logo_url),
-  teams_b:teams!matches_team_b_id_fkey(full_name, short_name, logo_url),
-  phases(
-    edition_id,
-    competition_editions(
-      id,
-      competitions(id, full_name, short_name, logo_url, organization_id)
-    )
-  )
-`;
+import { MATCH_SELECT_BASE } from "@/lib/utils";
 
 function formatDate(d: Date): string {
   return d.toISOString().slice(0, 10);
-}
-
-async function getPhaseIdsForOrg(orgId: string): Promise<string[]> {
-  const supabase = getSupabase();
-
-  const { data: competitions, error: compError } = await supabase
-    .from("competitions")
-    .select("id")
-    .eq("organization_id", orgId);
-
-  if (compError || !competitions?.length) return [];
-
-  const compIds = competitions.map((c) => c.id);
-
-  const { data: editions, error: edError } = await supabase
-    .from("competition_editions")
-    .select("id")
-    .in("competition_id", compIds);
-
-  if (edError || !editions?.length) return [];
-
-  const editionIds = editions.map((e) => e.id);
-
-  const { data: phases, error: phaseError } = await supabase
-    .from("phases")
-    .select("id")
-    .in("edition_id", editionIds);
-
-  if (phaseError || !phases?.length) return [];
-
-  return phases.map((p) => p.id);
 }
 
 export async function getRecentAndUpcomingMatches(
@@ -81,7 +34,7 @@ export async function getRecentAndUpcomingMatches(
   const [recentResult, upcomingResult] = await Promise.all([
     supabase
       .from("matches")
-      .select(MATCH_SELECT)
+      .select(MATCH_SELECT_BASE)
       .in("phase_id", phaseIds)
       .gte("match_date", fromRecent)
       .lte("match_date", toRecent)
@@ -89,7 +42,7 @@ export async function getRecentAndUpcomingMatches(
       .order("match_time", { ascending: false }),
     supabase
       .from("matches")
-      .select(MATCH_SELECT)
+      .select(MATCH_SELECT_BASE)
       .in("phase_id", phaseIds)
       .gte("match_date", fromUpcoming)
       .lte("match_date", toUpcoming)
