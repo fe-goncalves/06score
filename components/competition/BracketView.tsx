@@ -36,7 +36,7 @@ function BracketMatchupCard({
   const firstMatch = related[0];
 
   return (
-    <div className="w-[200px] shrink-0 rounded-lg border border-white/[0.08] bg-[#141414] text-sm">
+    <div className="w-[200px] shrink-0 rounded-lg border border-white/[0.08] card-surface text-sm">
       <BracketTeamRow
         team={teamA}
         score={hasScore ? agg.scoreA : null}

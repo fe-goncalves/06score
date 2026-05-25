@@ -59,7 +59,7 @@ function TimelineRow({
 
   const content = (
     <div
-      className={`flex max-w-[85%] items-center gap-3 rounded-lg border border-white/[0.06] bg-[#141414] px-3 py-2 ${
+      className={`flex max-w-[85%] items-center gap-3 rounded-lg border border-white/[0.06] card-surface px-3 py-2 ${
         isTeamA ? "flex-row" : "flex-row-reverse"
       }`}
     >

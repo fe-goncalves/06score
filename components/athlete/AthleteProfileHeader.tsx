@@ -23,17 +23,19 @@ export function AthleteProfileHeader({
         className="h-28 w-28 shrink-0 rounded-full object-cover sm:h-32 sm:w-32"
       />
       <div className="text-center sm:text-left">
-        <h1 className="text-2xl font-bold uppercase tracking-wide sm:text-3xl">
+        <h1 className="font-display text-2xl font-black uppercase tracking-wide sm:text-3xl">
           {athleteDisplayName(athlete.full_name, athlete.surname)}
         </h1>
-        <p className="mt-2 text-sm text-[var(--color-brand)]">
+        <p className="font-mono-label mt-2 text-[10px] font-bold uppercase text-[var(--color-brand)]">
           {getPositionName(athlete.player_positions)}
         </p>
         {team && (
-          <p className="mt-1 text-sm text-white/60">{team.full_name}</p>
+          <p className="font-body mt-1 text-sm text-white/60">{team.full_name}</p>
         )}
         {athlete.nationality && (
-          <p className="mt-1 text-xs text-white/40">{athlete.nationality}</p>
+          <p className="font-mono-label mt-1 text-[10px] uppercase text-white/40">
+            {athlete.nationality}
+          </p>
         )}
       </div>
     </header>

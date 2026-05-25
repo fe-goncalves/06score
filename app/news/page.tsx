@@ -36,7 +36,7 @@ export default async function NoticiasPage() {
   ]);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <main className="page-container py-8 md:py-12">
       <Link
         href="/"
         className="mb-8 inline-block text-xs font-bold uppercase tracking-wider text-white/40 transition-colors hover:text-[var(--color-brand)]"

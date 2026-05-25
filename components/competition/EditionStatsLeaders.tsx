@@ -25,7 +25,7 @@ function LeaderBlock({ title, leaders, valueKey }: LeaderBlockProps) {
             return (
               <li
                 key={`${valueKey}-${i}`}
-                className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-[#141414] px-3 py-2"
+                className="flex items-center gap-3 rounded-lg border border-white/[0.06] card-surface px-3 py-2"
               >
                 <span className="w-6 shrink-0 text-center text-xs font-bold text-white/40">
                   {i + 1}

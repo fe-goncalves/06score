@@ -9,15 +9,17 @@ interface CompetitionsGridProps {
 export function CompetitionsGrid({ competitions }: CompetitionsGridProps) {
   if (!competitions.length) {
     return (
-      <section className="py-20 lg:py-28">
+      <section className="page-container py-8">
         <SectionTitle>Competições ativas</SectionTitle>
-        <p className="text-sm text-white/40">Nenhuma competição ativa no momento.</p>
+        <p className="font-mono-label text-xs text-white/40">
+          Nenhuma competição ativa no momento.
+        </p>
       </section>
     );
   }
 
   return (
-    <section className="py-20 lg:py-28">
+    <section className="page-container py-8">
       <SectionTitle>Competições ativas</SectionTitle>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {competitions.map((competition) => (

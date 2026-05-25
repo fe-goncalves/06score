@@ -60,7 +60,7 @@ function HubContent({ hub }: { hub: CompetitionHubData }) {
 
 export function CompetitionHubClient({ hub }: { hub: CompetitionHubData }) {
   return (
-    <Suspense fallback={<div className="h-12 animate-pulse bg-[#141414]" />}>
+    <Suspense fallback={<div className="h-12 animate-pulse card-surface" />}>
       <CompetitionHubHeader
         competition={hub.competition}
         currentEdition={hub.currentEdition}

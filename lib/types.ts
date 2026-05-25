@@ -126,6 +126,21 @@ export interface NewsArticle {
   published_at: string | null;
 }
 
+export interface HomeNewsArticle extends NewsArticle {
+  competition_ids: string[];
+}
+
+export interface HomeEditionData {
+  editionId: string;
+  competitionId: string;
+  competitionName: string;
+  standings: StandingRow[];
+  teams: Team[];
+  topScorer: AthleteStatLeader | null;
+  topAssister: AthleteStatLeader | null;
+  topMvp: AthleteStatLeader | null;
+}
+
 export interface Athlete {
   id?: string;
   full_name: string;
@@ -144,6 +159,7 @@ export interface PlayerPosition {
 export interface AthleteStatLeader {
   goals: number | null;
   assists: number | null;
+  motm_count?: number | null;
   yellow_cards?: number | null;
   athletes: Athlete | null;
   teams: Team | null;

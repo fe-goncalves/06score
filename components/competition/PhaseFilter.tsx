@@ -24,7 +24,7 @@ export function PhaseFilter({
         className={`rounded px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
           selectedPhaseId === null
             ? "bg-[var(--color-brand)] text-black"
-            : "bg-[#141414] text-white/60 hover:text-white"
+            : "card-surface text-white/60 hover:text-white"
         }`}
       >
         Todas
@@ -37,7 +37,7 @@ export function PhaseFilter({
           className={`rounded px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
             selectedPhaseId === phase.id
               ? "bg-[var(--color-brand)] text-black"
-              : "bg-[#141414] text-white/60 hover:text-white"
+              : "card-surface text-white/60 hover:text-white"
           }`}
         >
           {phase.custom_label ?? phase.full_name}

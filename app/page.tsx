@@ -1,14 +1,9 @@
-import { CompetitionsGrid } from "@/components/home/CompetitionsGrid";
-import { LeadersSection } from "@/components/home/LeadersSection";
-import { MatchesCarousel } from "@/components/home/MatchesCarousel";
-import { NewsGrid } from "@/components/home/NewsGrid";
+import { HomeClient } from "@/components/home/HomeClient";
 import {
   getActiveCompetitions,
-  getActiveEditionId,
   getFeaturedNews,
+  getHomeEditionsBundle,
   getRecentAndUpcomingMatches,
-  getTopAssister,
-  getTopScorer,
 } from "@/lib/data/home";
 import { getOrgSlug, getOrganization } from "@/lib/org";
 
@@ -20,28 +15,21 @@ export default async function HomePage() {
     return null;
   }
 
-  const editionIdPromise = getActiveEditionId(org.id);
-
-  const [matches, competitions, news, editionId] = await Promise.all([
-    getRecentAndUpcomingMatches(org.id),
+  const [competitions, matches, news] = await Promise.all([
     getActiveCompetitions(org.id),
+    getRecentAndUpcomingMatches(org.id),
     getFeaturedNews(org.id),
-    editionIdPromise,
   ]);
 
-  const [topScorer, topAssister] = editionId
-    ? await Promise.all([
-        getTopScorer(editionId),
-        getTopAssister(editionId),
-      ])
-    : [null, null];
+  const editionsByCompetition = await getHomeEditionsBundle(competitions);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <MatchesCarousel recent={matches.recent} upcoming={matches.upcoming} />
-      <CompetitionsGrid competitions={competitions} />
-      <NewsGrid articles={news} />
-      <LeadersSection topScorer={topScorer} topAssister={topAssister} />
-    </div>
+    <HomeClient
+      org={org}
+      competitions={competitions}
+      matches={matches}
+      news={news}
+      editionsByCompetition={editionsByCompetition}
+    />
   );
 }

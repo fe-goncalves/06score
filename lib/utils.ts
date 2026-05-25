@@ -58,6 +58,16 @@ export function isMatchFinished(status: string): boolean {
   );
 }
 
+export function isMatchLive(status: string): boolean {
+  const s = status.toLowerCase();
+  return (
+    s === "live" ||
+    s === "ao_vivo" ||
+    s === "in_progress" ||
+    s === "ongoing"
+  );
+}
+
 export function getPositionName(
   positions: { full_name: string } | { full_name: string }[] | null | undefined,
 ): string {

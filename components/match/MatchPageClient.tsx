@@ -47,7 +47,7 @@ function MatchContent({ data }: MatchPageClientProps) {
 
 export function MatchPageClient({ data }: MatchPageClientProps) {
   return (
-    <Suspense fallback={<div className="h-12 animate-pulse bg-[#141414]" />}>
+    <Suspense fallback={<div className="h-12 animate-pulse card-surface" />}>
       <MatchHeader match={data.match} />
       <div className="mt-10">
         <MatchContent data={data} />

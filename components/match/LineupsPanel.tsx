@@ -72,7 +72,7 @@ function LineupColumn({
               className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${
                 row.played_as_goalkeeper
                   ? "border-[var(--color-brand)]/40 bg-[var(--color-brand)]/5"
-                  : "border-white/[0.06] bg-[#141414]"
+                  : "border-white/[0.06] card-surface"
               }`}
             >
               <div className="min-w-0 flex-1">

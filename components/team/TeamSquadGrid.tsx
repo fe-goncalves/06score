@@ -20,7 +20,7 @@ export function TeamSquadGrid({ squad }: TeamSquadGridProps) {
             <Link
               key={player.id}
               href={`/atletas/${player.id}`}
-              className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-[#141414] px-4 py-3 transition-colors hover:border-[var(--color-brand)]/40"
+              className="flex items-center gap-3 rounded-lg border border-white/[0.06] card-surface px-4 py-3 transition-colors hover:border-[var(--color-brand)]/40"
             >
               <OrgImage
                 src={player.photo_url}

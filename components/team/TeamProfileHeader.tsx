@@ -1,4 +1,4 @@
-import { OrgImage } from "@/components/ui/OrgImage";
+import { TeamLogo } from "@/components/ui/TeamLogo";
 import type { Team } from "@/lib/types";
 
 interface TeamProfileHeaderProps {
@@ -10,25 +10,21 @@ export function TeamProfileHeader({ team }: TeamProfileHeaderProps) {
 
   return (
     <header
-      className="flex flex-col items-center gap-6 rounded-xl border border-white/[0.06] bg-[#141414] p-8 sm:flex-row"
+      className="card-surface flex flex-col items-center gap-6 rounded-lg p-8 sm:flex-row"
       style={{ borderColor: `${accent}44` }}
     >
-      <OrgImage
-        src={team.logo_url}
-        alt={team.full_name}
-        width={120}
-        height={120}
-        className="h-28 w-28 shrink-0 rounded object-contain sm:h-32 sm:w-32"
-      />
+      <TeamLogo team={team} size={120} className="h-28 w-28 sm:h-32 sm:w-32" />
       <div className="text-center sm:text-left">
         <h1
-          className="text-2xl font-bold uppercase tracking-wide sm:text-3xl"
+          className="font-display text-2xl font-black uppercase tracking-wide sm:text-3xl"
           style={{ color: accent }}
         >
           {team.full_name}
         </h1>
         {team.abbreviation && (
-          <p className="mt-2 text-sm text-white/50">{team.abbreviation}</p>
+          <p className="font-mono-label mt-2 text-[10px] uppercase text-white/45">
+            {team.abbreviation}
+          </p>
         )}
       </div>
     </header>

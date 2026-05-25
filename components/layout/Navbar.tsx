@@ -1,17 +1,8 @@
 import Link from "next/link";
-import { MobileMenu } from "@/components/layout/MobileMenu";
+import { NavbarNavLinks } from "@/components/layout/NavbarNavLinks";
+import { NavbarSocial } from "@/components/layout/NavbarSocial";
 import { OrgImage } from "@/components/ui/OrgImage";
 import type { Organization } from "@/lib/types";
-
-const NAV_LINKS = [
-  { href: "/jogos", label: "JOGOS" },
-  { href: "/competicoes", label: "COMPETIÇÕES" },
-  { href: "/times", label: "TIMES" },
-  { href: "/atletas", label: "ATLETAS" },
-  { href: "/ranking", label: "RANKING" },
-  { href: "/news", label: "NOTÍCIAS" },
-  { href: "/hall-da-fama", label: "HALL DA FAMA" },
-];
 
 interface NavbarProps {
   org: Organization;
@@ -19,34 +10,23 @@ interface NavbarProps {
 
 export function Navbar({ org }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#0D0D0D]">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex shrink-0 items-center gap-3">
+    <header className="navbar-top sticky top-0 z-50">
+      <div className="page-container mx-auto flex h-14 max-w-7xl items-center gap-4 md:h-16">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5">
           <OrgImage
             src={org.logo_url}
             alt={org.name}
-            width={40}
-            height={40}
-            className="h-10 w-10 rounded object-contain"
+            width={36}
+            height={36}
+            className="h-9 w-9 object-contain"
           />
-          <span className="hidden text-sm font-bold tracking-wide sm:inline">
-            {org.name}
-          </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-[11px] font-bold tracking-widest text-white/70 transition-colors hover:text-[var(--color-brand)]"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        <NavbarNavLinks />
 
-        <MobileMenu />
+        <div className="ml-auto flex items-center gap-4">
+          <NavbarSocial org={org} />
+        </div>
       </div>
     </header>
   );

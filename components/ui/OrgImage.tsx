@@ -20,18 +20,26 @@ export function OrgImage({
   if (!src) {
     return (
       <div
-        className={`flex items-center justify-center bg-white/5 text-white/30 ${fill ? "absolute inset-0" : ""} ${className ?? ""}`}
+        className={`flex items-center justify-center bg-white/[0.05] text-white/25 ${fill ? "absolute inset-0" : ""} ${className ?? ""}`}
         style={fill ? undefined : { width, height }}
         aria-hidden
       >
-        <span className="text-xs font-bold">{alt.slice(0, 2).toUpperCase()}</span>
+        <span className="font-display text-[10px] font-bold uppercase">
+          {alt.slice(0, 2).toUpperCase()}
+        </span>
       </div>
     );
   }
 
   if (fill) {
     return (
-      <Image src={src} alt={alt} fill className={className} sizes="(max-width:768px) 100vw, 33vw" />
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        className={className}
+        sizes="(max-width:768px) 100vw, 33vw"
+      />
     );
   }
 

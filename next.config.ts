@@ -12,9 +12,9 @@ const securityHeaders = [
       // 06.score embeds de YouTube/Vimeo/Instagram nas páginas de partida
       "img-src 'self' https://*.supabase.co https://*.ytimg.com https://i.vimeocdn.com data: blob:",
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-      "font-src 'self'",
+      "font-src 'self' https://fonts.gstatic.com",
       // Permite embeds de vídeo via iframe (YouTube, Vimeo, Instagram)
       "frame-src https://www.youtube.com https://player.vimeo.com https://www.instagram.com",
       "frame-ancestors 'none'",

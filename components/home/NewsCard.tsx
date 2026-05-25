@@ -1,2 +1,2 @@
-// Re-export do componente centralizado
+// Re-export do card de notícias usado em listagens
 export { NewsCard } from "@/components/news/NewsCard";

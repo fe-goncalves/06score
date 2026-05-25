@@ -72,7 +72,7 @@ export function HallClient({ initialData, options, orgId }: HallClientProps) {
   }
 
   const selectClass =
-    "rounded border border-white/[0.08] bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-[var(--color-brand)] w-full sm:w-auto";
+    "rounded border border-white/[0.08] card-surface px-3 py-2 text-sm text-white outline-none focus:border-[var(--color-brand)] w-full sm:w-auto";
 
   return (
     <div>

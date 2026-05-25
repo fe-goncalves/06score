@@ -4,10 +4,20 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   as?: "div" | "article";
+  elevated?: boolean;
 }
 
-export function Card({ children, className = "", as: Tag = "div" }: CardProps) {
+export function Card({
+  children,
+  className = "",
+  as: Tag = "div",
+  elevated = false,
+}: CardProps) {
   return (
-    <Tag className={`card-base ${className}`}>{children}</Tag>
+    <Tag
+      className={`${elevated ? "card-surface-elevated" : "card-surface"} ${className}`}
+    >
+      {children}
+    </Tag>
   );
 }

@@ -41,7 +41,7 @@ export function AthletesGrid({ athletes }: AthletesGridProps) {
           id="team-filter"
           value={teamFilter}
           onChange={(e) => setTeamFilter(e.target.value)}
-          className="rounded border border-white/[0.08] bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-[var(--color-brand)]"
+          className="rounded border border-white/[0.08] card-surface px-3 py-2 text-sm text-white outline-none focus:border-[var(--color-brand)]"
         >
           <option value="">Todas</option>
           {teams.map((name) => (

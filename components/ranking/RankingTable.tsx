@@ -17,7 +17,7 @@ const POSITION_STYLES: Record<number, string> = {
 
 function SkeletonRow() {
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-white/[0.06] bg-[#141414] px-4 py-3 animate-pulse">
+    <div className="flex items-center gap-4 rounded-lg border border-white/[0.06] card-surface px-4 py-3 animate-pulse">
       <div className="h-4 w-6 rounded bg-white/10" />
       <div className="h-8 w-8 rounded bg-white/10" />
       <div className="h-4 flex-1 rounded bg-white/10" />
@@ -52,7 +52,7 @@ export function RankingTable({ rows, loading = false }: RankingTableProps) {
         const medal = MEDAL[position];
         const positionStyle =
           POSITION_STYLES[position] ??
-          "border-white/[0.06] bg-[#141414]";
+          "border-white/[0.06] card-surface";
 
         return (
           <div

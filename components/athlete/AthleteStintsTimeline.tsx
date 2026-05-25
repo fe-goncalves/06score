@@ -18,7 +18,7 @@ export function AthleteStintsTimeline({ stints }: AthleteStintsTimelineProps) {
           {stints.map((stint) => (
             <li
               key={stint.id}
-              className="flex items-center gap-4 rounded-lg border border-white/[0.06] bg-[#141414] px-4 py-3"
+              className="flex items-center gap-4 rounded-lg border border-white/[0.06] card-surface px-4 py-3"
             >
               <OrgImage
                 src={stint.teams?.logo_url}

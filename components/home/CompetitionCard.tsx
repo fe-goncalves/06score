@@ -16,17 +16,21 @@ export function CompetitionCard({ competition }: CompetitionCardProps) {
 
   return (
     <Link href={`/competicoes/${competition.id}`}>
-      <Card className="flex flex-col items-center gap-4 p-6 text-center">
+      <Card className="flex flex-col items-center gap-3 p-5 text-center">
         <OrgImage
           src={competition.logo_url}
           alt={competition.full_name}
-          width={72}
-          height={72}
-          className="h-[72px] w-[72px] rounded object-contain"
+          width={64}
+          height={64}
+          className="h-16 w-16 object-contain"
         />
         <div>
-          <h3 className="font-bold leading-tight">{competition.full_name}</h3>
-          <p className="mt-1 text-sm text-white/50">{seasonName}</p>
+          <h3 className="font-display text-sm font-black uppercase leading-tight">
+            {competition.full_name}
+          </h3>
+          <p className="font-mono-label mt-1 text-[10px] uppercase text-white/45">
+            {seasonName}
+          </p>
         </div>
       </Card>
     </Link>

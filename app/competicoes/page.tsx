@@ -18,7 +18,7 @@ export default async function CompetitionsListPage() {
   const competitions = await getCompetitionsList(org.id);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="page-container py-8 md:py-10">
       <Link
         href="/"
         className="mb-8 inline-block text-[11px] font-bold uppercase tracking-widest text-white/50 transition-colors hover:text-[var(--color-brand)]"

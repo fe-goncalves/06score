@@ -1,4 +1,5 @@
 import { MatchCard } from "@/components/home/MatchCard";
+import { SectionEnter } from "@/components/ui/SectionEnter";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import type { Match } from "@/lib/types";
 
@@ -12,21 +13,25 @@ export function MatchesCarousel({ recent, upcoming }: MatchesCarouselProps) {
 
   if (!all.length) {
     return (
-      <section className="py-20 lg:py-28">
+      <section className="page-container py-6">
         <SectionTitle>Jogos</SectionTitle>
-        <p className="text-sm text-white/40">Nenhuma partida nos últimos 7 ou próximos 30 dias.</p>
+        <p className="font-mono-label text-xs text-white/40">
+          Nenhuma partida nos últimos 7 ou próximos 30 dias.
+        </p>
       </section>
     );
   }
 
   return (
-    <section className="py-20 lg:py-28">
-      <SectionTitle>Jogos</SectionTitle>
-      <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 snap-x-mandatory sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        {all.map((match) => (
-          <MatchCard key={match.id} match={match} />
+    <SectionEnter className="py-6">
+      <div className="page-container mb-4">
+        <SectionTitle>Jogos</SectionTitle>
+      </div>
+      <div className="page-edge-x flex gap-3 overflow-x-auto pb-1 snap-x-mandatory scrollbar-hide">
+        {all.map((match, i) => (
+          <MatchCard key={match.id} match={match} index={i} />
         ))}
       </div>
-    </section>
+    </SectionEnter>
   );
 }
