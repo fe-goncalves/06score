@@ -130,15 +130,41 @@ export interface HomeNewsArticle extends NewsArticle {
   competition_ids: string[];
 }
 
+export interface HomeMotw {
+  athlete_id: string;
+  team_id: string | null;
+  round_label: string | null;
+  athlete_name: string;
+  athlete_surname: string | null;
+  athlete_photo_url: string | null;
+  team_name: string | null;
+  team_logo_url: string | null;
+}
+
 export interface HomeEditionData {
   editionId: string;
   competitionId: string;
   competitionName: string;
+  editionName: string | null;
   standings: StandingRow[];
+  currentPhaseType: Phase["phase_type"] | null;
+  currentPhaseId: string | null;
+  currentPhaseName: string | null;
+  phaseMatches: Match[];
+  phaseMatchups: Matchup[];
   teams: Team[];
+  latestMotw: HomeMotw | null;
+}
+
+export interface HomeHighlights {
   topScorer: AthleteStatLeader | null;
   topAssister: AthleteStatLeader | null;
-  topMvp: AthleteStatLeader | null;
+  topTeamByTitles: TeamStatLeader | null;
+}
+
+export interface HomeHighlightsBundle {
+  organization: HomeHighlights;
+  byCompetition: Record<string, HomeHighlights>;
 }
 
 export interface Athlete {
@@ -165,9 +191,34 @@ export interface AthleteStatLeader {
   teams: Team | null;
 }
 
+export interface TeamStatLeader {
+  titles: number | null;
+  wins: number | null;
+  points: number | null;
+  teams: Team | null;
+}
+
 export interface HomeMatches {
   recent: Match[];
   upcoming: Match[];
+}
+
+export interface HomeSponsor {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  website_url?: string | null;
+  display_order?: number | null;
+}
+
+export interface HomeTikTokVideo {
+  id: string;
+  video_url: string;
+  video_id: string;
+  title: string | null;
+  thumbnail_url: string | null;
+  display_order?: number | null;
+  published_at?: string | null;
 }
 
 export interface TeamEditionStats {

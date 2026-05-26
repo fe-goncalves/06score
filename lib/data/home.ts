@@ -1,17 +1,21 @@
-import { getPhaseIdsForOrg } from "@/lib/data/shared";
+import { enrichMatchupsWithTeams, getPhaseIdsForOrg } from "@/lib/data/shared";
 import { getSupabase } from "@/lib/supabase";
+import { filterHomeTeams } from "@/lib/home/teams";
 import type {
-  AthleteStatLeader,
   Competition,
   HomeMatches,
+  HomeMotw,
+  HomeSponsor,
   Match,
+  Matchup,
+  Phase,
   HomeEditionData,
   HomeNewsArticle,
   StandingRow,
   Team,
   TeamEditionStats,
 } from "@/lib/types";
-import { MATCH_SELECT_BASE, statsToStandings } from "@/lib/utils";
+import { isMatchUpcoming, MATCH_SELECT_BASE, statsToStandings } from "@/lib/utils";
 
 function formatDate(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -61,9 +65,11 @@ export async function getRecentAndUpcomingMatches(
     console.error("[getUpcomingMatches]", upcomingResult.error.message);
   }
 
+  const upcomingRaw = (upcomingResult.data as Match[] | null) ?? [];
+
   return {
     recent: (recentResult.data as Match[] | null) ?? [],
-    upcoming: (upcomingResult.data as Match[] | null) ?? [],
+    upcoming: upcomingRaw.filter((m) => isMatchUpcoming(m)),
   };
 }
 
@@ -136,6 +142,17 @@ function competitionLabel(comp: Competition): string {
   return comp.short_name ?? comp.full_name;
 }
 
+function currentEditionName(comp: Competition): string | null {
+  const editions = comp.competition_editions;
+  if (!editions?.length) return null;
+  const list = Array.isArray(editions) ? editions : [editions];
+  const current = list.find((e) => e.is_current) ?? list[0];
+  const seasons = current?.seasons;
+  return Array.isArray(seasons)
+    ? (seasons[0]?.name ?? null)
+    : (seasons?.name ?? null);
+}
+
 function currentEditionId(comp: Competition): string | null {
   const editions = comp.competition_editions;
   if (!editions?.length) return null;
@@ -163,6 +180,27 @@ export async function getOrgTeams(orgId: string): Promise<Team[]> {
   return (data as Team[] | null) ?? [];
 }
 
+export async function getOrgSponsors(orgId: string): Promise<HomeSponsor[]> {
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from("organization_sponsors")
+    .select("id, name, logo_url, website_url, display_order")
+    .eq("organization_id", orgId)
+    .eq("is_active", true)
+    .order("display_order", { ascending: true });
+
+  if (error) {
+    // Tabela ainda não criada no 06.LAB — seção fica oculta até existir dados.
+    if (error.code !== "PGRST205" && error.code !== "42P01") {
+      console.error("[getOrgSponsors]", error.message);
+    }
+    return [];
+  }
+
+  return (data as HomeSponsor[] | null) ?? [];
+}
+
 export async function getHomeEditionsBundle(
   competitions: Competition[],
 ): Promise<Record<string, HomeEditionData>> {
@@ -173,24 +211,30 @@ export async function getHomeEditionsBundle(
       const editionId = currentEditionId(comp);
       if (!editionId) return;
 
-      const [standings, teams, topScorer, topAssister, topMvp] =
+      const currentPhase = await getCurrentPhaseMeta(editionId);
+      const [standings, teams, latestMotw, phaseMatches, phaseMatchups] =
         await Promise.all([
           getEditionStandings(editionId),
           getEditionTeams(editionId),
-          getTopScorer(editionId),
-          getTopAssister(editionId),
-          getTopMotm(editionId),
+          getLatestMotwForEdition(editionId),
+          getCurrentPhaseMatches(currentPhase?.id ?? null),
+          getCurrentPhaseMatchups(currentPhase),
         ]);
 
       bundle[comp.id] = {
         editionId,
         competitionId: comp.id,
         competitionName: competitionLabel(comp),
+        editionName: currentEditionName(comp),
         standings,
+        currentPhaseType: currentPhase?.phase_type ?? null,
+        currentPhaseId: currentPhase?.id ?? null,
+        currentPhaseName:
+          currentPhase?.custom_label ?? currentPhase?.full_name ?? null,
+        phaseMatches,
+        phaseMatchups,
         teams,
-        topScorer,
-        topAssister,
-        topMvp,
+        latestMotw,
       };
     }),
   );
@@ -225,75 +269,6 @@ export async function getActiveEditionId(orgId: string): Promise<string | null> 
   }
 
   return edition?.id ?? null;
-}
-
-export async function getTopScorer(
-  editionId: string,
-): Promise<AthleteStatLeader | null> {
-  const supabase = getSupabase();
-
-  const { data, error } = await supabase
-    .from("athlete_edition_stats")
-    .select(
-      "goals, assists, athletes(id, full_name, surname, photo_url), teams(full_name, logo_url, primary_color)",
-    )
-    .eq("edition_id", editionId)
-    .order("goals", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[getTopScorer]", error.message);
-    return null;
-  }
-
-  return data as AthleteStatLeader | null;
-}
-
-export async function getTopAssister(
-  editionId: string,
-): Promise<AthleteStatLeader | null> {
-  const supabase = getSupabase();
-
-  const { data, error } = await supabase
-    .from("athlete_edition_stats")
-    .select(
-      "goals, assists, athletes(id, full_name, surname, photo_url), teams(full_name, logo_url, primary_color)",
-    )
-    .eq("edition_id", editionId)
-    .order("assists", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[getTopAssister]", error.message);
-    return null;
-  }
-
-  return data as AthleteStatLeader | null;
-}
-
-export async function getTopMotm(
-  editionId: string,
-): Promise<AthleteStatLeader | null> {
-  const supabase = getSupabase();
-
-  const { data, error } = await supabase
-    .from("athlete_edition_stats")
-    .select(
-      "goals, assists, motm_count, athletes(id, full_name, surname, photo_url), teams(full_name, logo_url, primary_color)",
-    )
-    .eq("edition_id", editionId)
-    .order("motm_count", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[getTopMotm]", error.message);
-    return null;
-  }
-
-  return data as AthleteStatLeader | null;
 }
 
 export async function getEditionStandings(
@@ -351,5 +326,114 @@ export async function getEditionTeams(editionId: string): Promise<Team[]> {
     const t = Array.isArray(raw) ? raw[0] : raw;
     if (t) teams.push(t);
   }
-  return teams;
+  return filterHomeTeams(teams);
+}
+
+async function getCurrentPhaseMeta(
+  editionId: string,
+): Promise<Phase | null> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("phases")
+    .select(
+      "id, edition_id, full_name, custom_label, phase_type, display_order, is_current",
+    )
+    .eq("edition_id", editionId)
+    .order("is_current", { ascending: false })
+    .order("display_order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return null;
+  return (data as Phase | null) ?? null;
+}
+
+async function getCurrentPhaseMatches(phaseId: string | null): Promise<Match[]> {
+  if (!phaseId) return [];
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("matches")
+    .select(MATCH_SELECT_BASE)
+    .eq("phase_id", phaseId)
+    .order("match_date", { ascending: false })
+    .order("match_time", { ascending: false });
+
+  if (error) return [];
+  return (data as Match[] | null) ?? [];
+}
+
+async function getCurrentPhaseMatchups(
+  phase: Phase | null,
+): Promise<Matchup[]> {
+  if (!phase?.id) return [];
+  if (phase.phase_type !== "knockout" && phase.phase_type !== "conference") {
+    return [];
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("matchups")
+    .select(
+      "id, phase_id, conference_id, round_label, display_order, is_completed, team_a_id, team_b_id",
+    )
+    .eq("phase_id", phase.id)
+    .order("display_order", { ascending: true });
+
+  if (error) return [];
+  return enrichMatchupsWithTeams((data as Matchup[] | null) ?? []);
+}
+
+async function getLatestMotwForEdition(
+  editionId: string,
+): Promise<HomeMotw | null> {
+  const supabase = getSupabase();
+  const activeEditionId = editionId;
+
+  const { data: motwSquad } = await supabase
+    .from("selection_squads")
+    .select(
+      `
+      id,
+      round_id,
+      created_at,
+      rounds ( name, custom_label ),
+      selection_squad_members (
+        athlete_id,
+        team_id,
+        athletes ( id, full_name, surname, photo_url ),
+        teams ( id, full_name, abbreviation, logo_url )
+      )
+    `,
+    )
+    .eq("squad_type", "motw")
+    .eq("edition_id", activeEditionId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // O MOTW tem exatamente 1 membro — o atleta escolhido
+  const motwMember = motwSquad?.selection_squad_members?.[0] ?? null;
+
+  const motw = motwMember?.athlete_id
+    ? {
+        athlete: motwMember.athletes,
+        team: motwMember.teams,
+        round: motwSquad?.rounds,
+      }
+    : null;
+
+  if (!motw?.athlete?.id) return null;
+
+  const round = Array.isArray(motw.round) ? motw.round[0] : motw.round;
+  return {
+    athlete_id: motw.athlete.id,
+    team_id: motwMember?.team_id ?? null,
+    round_label: round?.custom_label ?? round?.name ?? null,
+    athlete_name: motw.athlete.full_name,
+    athlete_surname: motw.athlete.surname ?? null,
+    athlete_photo_url: motw.athlete.photo_url ?? null,
+    team_name: motw.team?.abbreviation ?? motw.team?.full_name ?? null,
+    team_logo_url: motw.team?.logo_url ?? null,
+  };
 }

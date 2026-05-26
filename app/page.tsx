@@ -3,8 +3,10 @@ import {
   getActiveCompetitions,
   getFeaturedNews,
   getHomeEditionsBundle,
+  getOrgSponsors,
   getRecentAndUpcomingMatches,
 } from "@/lib/data/home";
+import { getHomeHighlightsBundle } from "@/lib/data/home-highlights";
 import { getOrgSlug, getOrganization } from "@/lib/org";
 
 export default async function HomePage() {
@@ -15,13 +17,17 @@ export default async function HomePage() {
     return null;
   }
 
-  const [competitions, matches, news] = await Promise.all([
+  const [competitions, matches, news, sponsors] = await Promise.all([
     getActiveCompetitions(org.id),
     getRecentAndUpcomingMatches(org.id),
     getFeaturedNews(org.id),
+    getOrgSponsors(org.id),
   ]);
 
-  const editionsByCompetition = await getHomeEditionsBundle(competitions);
+  const [editionsByCompetition, highlights] = await Promise.all([
+    getHomeEditionsBundle(competitions),
+    getHomeHighlightsBundle(org.id, competitions),
+  ]);
 
   return (
     <HomeClient
@@ -29,7 +35,9 @@ export default async function HomePage() {
       competitions={competitions}
       matches={matches}
       news={news}
+      sponsors={sponsors}
       editionsByCompetition={editionsByCompetition}
+      highlights={highlights}
     />
   );
 }

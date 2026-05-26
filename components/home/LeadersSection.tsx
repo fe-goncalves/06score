@@ -1,52 +1,103 @@
-import { LeaderCard } from "@/components/home/LeaderCard";
+import { HighlightStatCard } from "@/components/home/HighlightStatCard";
 import { SectionEnter } from "@/components/ui/SectionEnter";
-import { SectionTitle } from "@/components/ui/SectionTitle";
-import type { AthleteStatLeader } from "@/lib/types";
+import type { AthleteStatLeader, TeamStatLeader } from "@/lib/types";
+import { athleteDisplayName } from "@/lib/utils";
 
 interface LeadersSectionProps {
   topScorer: AthleteStatLeader | null;
   topAssister: AthleteStatLeader | null;
-  topMvp: AthleteStatLeader | null;
+  topTeamByTitles: TeamStatLeader | null;
+  competitionColor?: string | null;
+  isOrganizationScope?: boolean;
+}
+
+function teamDisplayName(team: TeamStatLeader["teams"]): string {
+  if (!team) return "";
+  return team.short_name ?? team.full_name;
 }
 
 export function LeadersSection({
   topScorer,
   topAssister,
-  topMvp,
+  topTeamByTitles,
+  competitionColor,
+  isOrganizationScope = false,
 }: LeadersSectionProps) {
-  const hasAny = topScorer || topAssister || topMvp;
+  const hasAny = topScorer?.athletes || topAssister?.athletes || topTeamByTitles?.teams;
 
-  if (!hasAny) {
-    return (
-      <section className="page-container py-6">
-        <SectionTitle>Destaques</SectionTitle>
-        <p className="font-mono-label text-xs text-white/40">
-          Estatísticas indisponíveis.
-        </p>
-      </section>
-    );
-  }
+  if (!hasAny) return null;
+
+  const scorerAthlete = topScorer?.athletes;
+  const assisterAthlete = topAssister?.athletes;
+  const titleTeam = topTeamByTitles?.teams;
+  const titleStat =
+    topTeamByTitles?.titles ??
+    topTeamByTitles?.wins ??
+    topTeamByTitles?.points ??
+    0;
 
   return (
-    <SectionEnter className="py-6">
-      <div className="page-container mb-4">
-        <SectionTitle>Destaques</SectionTitle>
-      </div>
-      <div className="page-edge-x flex gap-3 overflow-x-auto pb-1 snap-x-mandatory scrollbar-hide md:page-container md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:pb-0">
-        <LeaderCard
+    <SectionEnter className="py-6 md:py-8">
+      <div className="destaques-grid page-container">
+        <HighlightStatCard
           label="Artilheiro"
           stat={topScorer?.goals ?? 0}
-          leader={topScorer}
+          name={
+            scorerAthlete
+              ? athleteDisplayName(
+                  scorerAthlete.full_name,
+                  scorerAthlete.surname,
+                )
+              : ""
+          }
+          subtitle={
+            topScorer?.teams?.short_name ?? topScorer?.teams?.full_name ?? null
+          }
+          imageUrl={scorerAthlete?.photo_url}
+          href={scorerAthlete?.id ? `/atletas/${scorerAthlete.id}` : undefined}
+          accentColor={competitionColor}
+          watermark="GOL"
         />
-        <LeaderCard
+        <HighlightStatCard
           label="Assistências"
           stat={topAssister?.assists ?? 0}
-          leader={topAssister}
+          name={
+            assisterAthlete
+              ? athleteDisplayName(
+                  assisterAthlete.full_name,
+                  assisterAthlete.surname,
+                )
+              : ""
+          }
+          subtitle={
+            topAssister?.teams?.short_name ??
+            topAssister?.teams?.full_name ??
+            null
+          }
+          imageUrl={assisterAthlete?.photo_url}
+          href={
+            assisterAthlete?.id ? `/atletas/${assisterAthlete.id}` : undefined
+          }
+          accentColor={competitionColor}
+          watermark="ASS"
         />
-        <LeaderCard
-          label="MVP"
-          stat={topMvp?.motm_count ?? 0}
-          leader={topMvp}
+        <HighlightStatCard
+          label="Títulos"
+          stat={titleStat}
+          name={teamDisplayName(titleTeam)}
+          subtitle={
+            topTeamByTitles?.titles != null &&
+            topTeamByTitles.wins == null &&
+            topTeamByTitles.titles > 0
+              ? isOrganizationScope
+                ? "Campeã da organização"
+                : "Campeã da competição"
+              : "Histórico de vitórias"
+          }
+          imageUrl={titleTeam?.logo_url}
+          href={titleTeam?.id ? `/times/${titleTeam.id}` : undefined}
+          accentColor={competitionColor ?? titleTeam?.primary_color}
+          watermark="TIT"
         />
       </div>
     </SectionEnter>

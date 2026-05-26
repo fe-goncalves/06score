@@ -11,12 +11,12 @@ const securityHeaders = [
       "default-src 'self'",
       // 06.score embeds de YouTube/Vimeo/Instagram nas páginas de partida
       "img-src 'self' https://*.supabase.co https://*.ytimg.com https://i.vimeocdn.com data: blob:",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.tiktok.com https://*.tiktok.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.tiktok.com https://*.tiktok.com",
       "font-src 'self' https://fonts.gstatic.com",
       // Permite embeds de vídeo via iframe (YouTube, Vimeo, Instagram)
-      "frame-src https://www.youtube.com https://player.vimeo.com https://www.instagram.com",
+      "frame-src https://www.youtube.com https://player.vimeo.com https://www.instagram.com https://www.tiktok.com https://*.tiktok.com",
       "frame-ancestors 'none'",
     ].join("; "),
   },

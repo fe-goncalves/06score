@@ -68,6 +68,38 @@ export function isMatchLive(status: string): boolean {
   );
 }
 
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Partida ainda não realizada (futura ou hoje com horário à frente). */
+export function isMatchUpcoming(match: {
+  status: string;
+  match_date: string;
+  match_time: string | null;
+}): boolean {
+  if (isMatchFinished(match.status) || isMatchLive(match.status)) {
+    return false;
+  }
+
+  const status = match.status.toLowerCase();
+  if (status === "cancelled" || status === "cancelado") {
+    return false;
+  }
+
+  const today = todayIsoDate();
+  if (match.match_date > today) return true;
+  if (match.match_date < today) return false;
+
+  if (!match.match_time) return true;
+
+  const now = new Date();
+  const [hours, minutes] = match.match_time.split(":").map(Number);
+  const kickoff = new Date();
+  kickoff.setHours(hours ?? 0, minutes ?? 0, 0, 0);
+  return kickoff.getTime() > now.getTime();
+}
+
 export function getPositionName(
   positions: { full_name: string } | { full_name: string }[] | null | undefined,
 ): string {

@@ -1,8 +1,11 @@
+import { filterHomeTeams } from "@/lib/home/teams";
 import type {
-  AthleteStatLeader,
   Competition,
   HomeEditionData,
+  HomeHighlights,
+  HomeHighlightsBundle,
   HomeMatches,
+  HomeMotw,
   HomeNewsArticle,
   Match,
   StandingRow,
@@ -63,46 +66,67 @@ export function getTeamsForFilter(
   competitions: Competition[],
   competitionId: CompetitionFilterId,
 ): Team[] {
-  return (
+  const teams =
     resolveEditionData(editionsByCompetition, competitions, competitionId)
-      ?.teams ?? []
-  );
+      ?.teams ?? [];
+  return filterHomeTeams(teams);
 }
 
+const EMPTY_HIGHLIGHTS: HomeHighlights = {
+  topScorer: null,
+  topAssister: null,
+  topTeamByTitles: null,
+};
+
 export function getLeadersForFilter(
+  highlights: HomeHighlightsBundle,
+  competitionId: CompetitionFilterId,
+): HomeHighlights {
+  if (!competitionId) {
+    return highlights.organization;
+  }
+  return highlights.byCompetition[competitionId] ?? EMPTY_HIGHLIGHTS;
+}
+
+export function getLatestMotwForFilter(
   editionsByCompetition: Record<string, HomeEditionData>,
   competitions: Competition[],
   competitionId: CompetitionFilterId,
-): {
-  topScorer: AthleteStatLeader | null;
-  topAssister: AthleteStatLeader | null;
-  topMvp: AthleteStatLeader | null;
-} {
-  const data = resolveEditionData(
-    editionsByCompetition,
-    competitions,
-    competitionId,
+): HomeMotw | null {
+  return (
+    resolveEditionData(editionsByCompetition, competitions, competitionId)
+      ?.latestMotw ?? null
   );
-  return {
-    topScorer: data?.topScorer ?? null,
-    topAssister: data?.topAssister ?? null,
-    topMvp: data?.topMvp ?? null,
-  };
 }
 
 export function getActiveCompetitionMeta(
   editionsByCompetition: Record<string, HomeEditionData>,
   competitions: Competition[],
   competitionId: CompetitionFilterId,
-): { id: string; name: string } | null {
+): {
+  id: string;
+  name: string;
+  primaryColor: string | null;
+  logoUrl: string | null;
+} | null {
   if (competitionId) {
     const data = editionsByCompetition[competitionId];
-    if (data) return { id: data.competitionId, name: data.competitionName };
+    if (data) {
+      const comp = competitions.find((c) => c.id === data.competitionId);
+      return {
+        id: data.competitionId,
+        name: data.competitionName,
+        primaryColor: comp?.primary_color ?? null,
+        logoUrl: comp?.logo_url ?? null,
+      };
+    }
     const comp = competitions.find((c) => c.id === competitionId);
     if (comp) {
       return {
         id: comp.id,
         name: comp.short_name ?? comp.full_name,
+        primaryColor: comp.primary_color,
+        logoUrl: comp.logo_url,
       };
     }
     return null;
@@ -113,5 +137,7 @@ export function getActiveCompetitionMeta(
   return {
     id: first.id,
     name: data?.competitionName ?? first.short_name ?? first.full_name,
+    primaryColor: first.primary_color,
+    logoUrl: first.logo_url,
   };
 }
