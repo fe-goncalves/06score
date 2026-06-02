@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import "@/app/athlete.css";
 import { AthletePageClient } from "@/components/athlete/AthletePageClient";
 import { getAthleteProfile } from "@/lib/data/athlete";
 import { getOrgSlug, getOrganization } from "@/lib/org";
@@ -36,7 +35,7 @@ export default async function AthleteProfilePage({ params }: PageProps) {
   if (!profile) notFound();
 
   return (
-    <div className="page-container athlete-page-wrap pb-14 pt-0">
+    <div className="page-container athlete-page-wrap pb-6 pt-0">
       <AthletePageClient profile={profile} />
     </div>
   );

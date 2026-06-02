@@ -27,8 +27,18 @@ export interface Team {
   primary_color?: string | null;
 }
 
+export interface Year {
+  id: string;
+  value: number;
+}
+
 export interface Season {
+  id?: string;
   name: string;
+  /** Legado; preferir `years.value` via join. */
+  year?: number | null;
+  year_id?: string | null;
+  years?: Year | null;
 }
 
 export interface CompetitionEdition {
@@ -100,6 +110,11 @@ export interface OrgVenue {
   recent_matches?: number;
 }
 
+export interface VenueProfileData {
+  venue: OrgVenue;
+  matches: Match[];
+}
+
 export interface MatchPhase {
   id?: string;
   edition_id: string;
@@ -108,6 +123,7 @@ export interface MatchPhase {
   phase_type?: string;
   competition_editions?: {
     id: string;
+    seasons?: Season | null;
     competitions?: {
       id: string;
       full_name: string;
@@ -137,6 +153,7 @@ export interface Match {
   motm_team?: Team | null;
   teams_a: Team | null;
   teams_b: Team | null;
+  athlete_team_id?: string | null;
   phases: MatchPhase | null;
   rounds?: Round | null;
   venues?: Venue | null;
@@ -381,6 +398,20 @@ export interface AthleteCareerStats {
   total_yellow_cards: number;
   total_red_cards: number;
   total_motm: number;
+  total_totw?: number;
+  total_motw?: number;
+  total_hat_tricks?: number;
+  total_pokers?: number;
+  total_mvp?: number;
+  total_top_scorer?: number;
+  total_top_assists?: number;
+  total_best_goalkeeper?: number;
+  total_penalties_scored?: number;
+  total_penalties_taken?: number;
+  total_shootouts_scored?: number;
+  total_shootouts_taken?: number;
+  avg_rating?: number | null;
+  total_ratings_count?: number;
 }
 
 export interface AthleteTeamStint {
@@ -559,20 +590,200 @@ export interface AthleteRecentMatch {
   match: Match;
   rating: number | null;
   isMotm: boolean;
+  actions: {
+    match_id: string;
+    action_type: string;
+    goal_type: string | null;
+    is_own_goal: boolean | null;
+    minute: number | null;
+  }[];
 }
 
+export interface AthleteCareerSummary {
+  matches: number;
+  goals: number;
+  assists: number;
+  yellow_cards: number;
+  red_cards: number;
+  titles: number;
+  /** Comissão técnica (vitórias / empates / derrotas). */
+  wins?: number;
+  draws?: number;
+  losses?: number;
+}
+
+export interface StaffCareerStats {
+  total_matches: number;
+  total_wins: number;
+  total_draws: number;
+  total_losses: number;
+  total_yellow_cards: number;
+  total_red_cards: number;
+  avg_rating?: number | null;
+  total_ratings_count?: number;
+}
+
+export interface AthletePhaseOption {
+  id: string;
+  edition_id: string;
+  full_name: string;
+  custom_label: string | null;
+  display_order: number;
+}
+
+/** Fases brutas para filtro da aba Estatísticas (agrupadas no client por competição). */
+export interface AthleteStatsPhaseRecord {
+  id: string;
+  edition_id: string;
+  full_name: string;
+  custom_label: string | null;
+  display_order: number;
+  template_id: string | null;
+  competition_id: string | null;
+}
+
+export type HubProfileKind = "athlete" | "staff";
+
 export interface AthleteProfileData {
+  profileKind?: HubProfileKind;
+  breadcrumb?: { href: string; label: string };
   athlete: Athlete & { id: string; nationality: string | null };
-  careerStats: AthleteCareerStats | null;
+  careerStats: AthleteCareerStats | StaffCareerStats | null;
+  careerSummary: AthleteCareerSummary;
   stints: AthleteTeamStint[];
   recentMatches: AthleteRecentMatch[];
+  rosterEntries: AthleteRosterEntry[];
+  editionStats: AthleteEditionStatRow[];
+  phases: AthletePhaseOption[];
+  statsPhases: AthleteStatsPhaseRecord[];
+  awards: AthleteAwardEntry[];
+  teamAwards: AthleteAwardEntry[];
+}
+
+export interface AthleteRosterEntry {
+  id: string;
+  edition_id: string;
+  edition_team_id?: string | null;
+  /** Pode não existir na tabela; preenchido só se a coluna existir no banco. */
+  created_at?: string | null;
+  status: string | null;
+  edition_teams: {
+    team_id: string;
+    teams: Pick<Team, "id" | "full_name" | "abbreviation" | "logo_url"> | null;
+  } | null;
+  competition_editions: {
+    competitions: Pick<Competition, "id" | "full_name" | "short_name" | "logo_url"> | null;
+    seasons: Season | null;
+  } | null;
+}
+
+export interface AthleteEditionStatRow {
+  edition_id: string;
+  team_id: string | null;
+  matches_played: number;
+  /** Vitórias (comissão técnica). */
+  wins?: number;
+  draws?: number;
+  losses?: number;
+  goals: number;
+  assists: number;
+  yellow_cards: number;
+  red_cards: number;
+  motm_count: number;
+  totw_count: number;
+  motw_count: number;
+  penalties_taken: number;
+  penalties_scored: number;
+  shootouts_taken: number;
+  shootouts_scored: number;
+  goals_conceded: number;
+  penalty_saves: number;
+  avg_rating: number | null;
+  competition_editions: {
+    id: string;
+    season_id?: string | null;
+    competition_id?: string | null;
+    /** Usado só para ordenar logo da temporada; opcional se não vier no embed. */
+    created_at?: string | null;
+    competitions: Pick<Competition, "id" | "full_name" | "short_name" | "logo_url"> | null;
+    seasons: Season | null;
+  } | null;
+  teams: Pick<Team, "id" | "full_name" | "abbreviation" | "logo_url"> | null;
+}
+
+export interface AthleteAwardEntry {
+  id: string;
+  award_type: string;
+  edition_id: string;
+  winning_team_id?: string | null;
+  competition_editions: {
+    competitions: Pick<Competition, "id" | "full_name" | "short_name" | "logo_url"> | null;
+    seasons: Season | null;
+  } | null;
+  teams?: Pick<Team, "full_name" | "abbreviation" | "logo_url"> | null;
+}
+
+export interface StaffProfileData {
+  staff: {
+    id: string;
+    full_name: string;
+    surname: string | null;
+    photo_url: string | null;
+    nationality: string | null;
+    birth_date: string | null;
+    role: string | null;
+  };
+  careerStats: StaffCareerStats | null;
+  careerSummary: AthleteCareerSummary;
+  stints: AthleteTeamStint[];
+  recentMatches: AthleteRecentMatch[];
+  rosterEntries: AthleteRosterEntry[];
+  editionStats: AthleteEditionStatRow[];
+  phases: AthletePhaseOption[];
+  statsPhases: AthleteStatsPhaseRecord[];
+  awards: AthleteAwardEntry[];
+  teamAwards: AthleteAwardEntry[];
+}
+
+export interface TeamEditionStatRow {
+  edition_id: string;
+  team_id: string | null;
+  matches_played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals_scored: number;
+  goals_conceded: number;
+  points: number;
+  yellow_cards?: number;
+  red_cards?: number;
+  competition_editions: {
+    id: string;
+    season_id?: string | null;
+    competition_id?: string | null;
+    competitions: Pick<Competition, "id" | "full_name" | "short_name" | "logo_url"> | null;
+    seasons: Season | null;
+  } | null;
+}
+
+export interface TeamCareerSummary {
+  matches: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals_scored: number;
+  goals_conceded: number;
+  points: number;
+  titles: number;
 }
 
 export interface TeamProfileData {
   team: Team & { id: string };
+  careerSummary: TeamCareerSummary;
   squad: (Athlete & { id: string })[];
-  editionStats: TeamEditionStats | null;
-  recentMatches: Match[];
+  editionStats: TeamEditionStatRow[];
+  teamAwards: AthleteAwardEntry[];
+  recentMatches: AthleteRecentMatch[];
 }
 
 // ─── Ranking ──────────────────────────────────────────────────────────────────

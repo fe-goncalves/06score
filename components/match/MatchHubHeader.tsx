@@ -166,7 +166,7 @@ export function MatchHubHeader({
               </span>
               {venue.id ? (
                 <Link
-                  href={`/arenas#venue-${venue.id}`}
+                  href={`/arenas/${venue.id}`}
                   className="match-hub-meta-item match-hub-meta-link"
                 >
                   <PitchIcon />

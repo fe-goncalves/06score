@@ -1,14 +1,20 @@
+import { buildTeamCareerSummary } from "@/lib/team/teamCareerSummary";
+import { fetchTeamEditionStats } from "@/lib/team/fetchTeamEditionStats";
 import { getActiveEditionId } from "@/lib/data/home";
 import { fetchEditionTeamsForEdition, getPhaseIdsForOrg } from "@/lib/data/shared";
 import { getSupabase } from "@/lib/supabase";
 import type {
   Athlete,
+  AthleteAwardEntry,
+  AthleteRecentMatch,
   Match,
   Team,
-  TeamEditionStats,
+  TeamListItem,
   TeamProfileData,
 } from "@/lib/types";
 import { MATCH_SELECT_BASE } from "@/lib/utils";
+
+const MATCH_LIMIT = 40;
 
 export interface TeamListItem {
   id: string;
@@ -49,17 +55,7 @@ export async function getTeamProfile(
     return null;
   }
 
-  const { data: editionTeam } = await supabase
-    .from("edition_teams")
-    .select("edition_id")
-    .eq("team_id", teamId)
-    .order("edition_id", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const editionId = editionTeam?.edition_id as string | undefined;
-
-  const [squadResult, statsResult, phaseIds] = await Promise.all([
+  const [squadResult, editionStats, awardsResult, phaseIds] = await Promise.all([
     supabase
       .from("athlete_team_stints")
       .select(
@@ -69,29 +65,35 @@ export async function getTeamProfile(
       )
       .eq("team_id", teamId)
       .eq("is_current", true),
-    editionId
-      ? supabase
-          .from("team_edition_stats")
-          .select(
-            `
-            edition_id,
-            team_id,
-            matches_played,
-            wins,
-            draws,
-            losses,
-            goals_scored,
-            goals_conceded,
-            points,
-            teams(full_name, abbreviation, logo_url)
-          `,
-          )
-          .eq("edition_id", editionId)
-          .eq("team_id", teamId)
-          .maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
+    fetchTeamEditionStats(teamId),
+    supabase
+      .from("edition_awards")
+      .select(
+        `
+        id,
+        award_type,
+        winning_team_id,
+        edition_id,
+        competition_editions (
+          competitions ( id, full_name, short_name, logo_url ),
+          seasons ( name )
+        ),
+        teams!edition_awards_winning_team_id_fkey (
+          id, full_name, abbreviation, logo_url
+        )
+      `,
+      )
+      .eq("winning_team_id", teamId)
+      .in("award_type", ["champion", "runner_up", "third_place"]),
     getPhaseIdsForOrg(orgId),
   ]);
+
+  if (squadResult.error) {
+    console.error("[getTeamProfile:squad]", squadResult.error.message);
+  }
+  if (awardsResult.error) {
+    console.error("[getTeamProfile:awards]", awardsResult.error.message);
+  }
 
   const squad: (Athlete & { id: string })[] = [];
   for (const row of squadResult.data ?? []) {
@@ -104,24 +106,50 @@ export async function getTeamProfile(
     }
   }
 
-  let recentMatches: Match[] = [];
+  squad.sort((a, b) =>
+    (a.surname ?? a.full_name).localeCompare(b.surname ?? b.full_name, "pt-BR"),
+  );
+
+  const teamAwards = (awardsResult.data as AthleteAwardEntry[] | null) ?? [];
+
+  let recentMatches: AthleteRecentMatch[] = [];
   if (phaseIds.length) {
-    const { data: matchesData } = await supabase
+    const { data: matchesData, error: matchesError } = await supabase
       .from("matches")
       .select(MATCH_SELECT_BASE)
       .in("phase_id", phaseIds)
       .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
       .order("match_date", { ascending: false })
       .order("match_time", { ascending: false })
-      .limit(5);
+      .limit(MATCH_LIMIT);
 
-    recentMatches = (matchesData as Match[] | null) ?? [];
+    if (matchesError) {
+      console.error("[getTeamProfile:matches]", matchesError.message);
+    } else {
+      recentMatches = ((matchesData as Match[] | null) ?? []).map((match) => ({
+        match: {
+          ...match,
+          athlete_team_id: teamId,
+        } as Match,
+        rating: null,
+        isMotm: false,
+        actions: [],
+      }));
+    }
   }
+
+  const careerSummary = buildTeamCareerSummary({
+    editionStats,
+    teamAwards,
+    presenceMatches: recentMatches.length,
+  });
 
   return {
     team: team as Team & { id: string },
+    careerSummary,
     squad,
-    editionStats: (statsResult.data as TeamEditionStats | null) ?? null,
+    editionStats,
+    teamAwards,
     recentMatches,
   };
 }

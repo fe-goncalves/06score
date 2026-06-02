@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { TeamPageClient } from "@/components/team/TeamPageClient";
-import { getTeamProfile } from "@/lib/data/team";
+import { StaffPageClient } from "@/components/staff/StaffPageClient";
+import { getStaffProfile } from "@/lib/data/staff";
 import { getOrgSlug, getOrganization } from "@/lib/org";
 
 interface PageProps {
@@ -11,29 +11,25 @@ export async function generateMetadata({ params }: PageProps) {
   const { id } = await params;
   const slug = await getOrgSlug();
   const org = await getOrganization(slug);
-  if (!org) return { title: "Time" };
+  if (!org) return { title: "Comissão técnica" };
 
-  const profile = await getTeamProfile(id, org.id);
-  return {
-    title:
-      profile?.team.short_name?.trim() ||
-      profile?.team.full_name ||
-      "Time",
-  };
+  const profile = await getStaffProfile(id, org.id);
+  const label = profile?.staff.surname ?? profile?.staff.full_name ?? "Comissão técnica";
+  return { title: label };
 }
 
-export default async function TeamProfilePage({ params }: PageProps) {
+export default async function StaffProfilePage({ params }: PageProps) {
   const { id } = await params;
   const slug = await getOrgSlug();
   const org = await getOrganization(slug);
   if (!org) return null;
 
-  const profile = await getTeamProfile(id, org.id);
+  const profile = await getStaffProfile(id, org.id);
   if (!profile) notFound();
 
   return (
     <div className="page-container athlete-page-wrap pb-6 pt-0">
-      <TeamPageClient profile={profile} />
+      <StaffPageClient profile={profile} />
     </div>
   );
 }

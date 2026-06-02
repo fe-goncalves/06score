@@ -101,6 +101,7 @@ async function attachTeamsToEditionRows(
 
 export type EditionTeamLineupEmbed = {
   team_id: string;
+  edition_id?: string;
   teams: Team | null;
 };
 
@@ -115,7 +116,7 @@ export async function fetchEditionTeamsByIds(
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("edition_teams")
-    .select("id, team_id")
+    .select("id, team_id, edition_id")
     .in("id", uniqueIds);
 
   if (error) {
@@ -123,7 +124,7 @@ export async function fetchEditionTeamsByIds(
     return map;
   }
 
-  const rows = (data ?? []) as { id: string; team_id: string }[];
+  const rows = (data ?? []) as { id: string; team_id: string; edition_id?: string }[];
   if (!rows.length) return map;
 
   const teamIds = [...new Set(rows.map((r) => r.team_id).filter(Boolean))];
@@ -147,6 +148,7 @@ export async function fetchEditionTeamsByIds(
   for (const row of rows) {
     map.set(row.id, {
       team_id: row.team_id,
+      edition_id: row.edition_id,
       teams: teamsMap[row.team_id] ?? null,
     });
   }

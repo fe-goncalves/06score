@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { CSSProperties } from "react";
 import { OrgImage } from "@/components/ui/OrgImage";
 import type { OrgVenue } from "@/lib/types";
@@ -18,7 +19,7 @@ export function ArenaGlassCard({ venue, index }: ArenaGlassCardProps) {
   const matchCount =
     (venue.upcoming_matches ?? 0) + (venue.recent_matches ?? 0);
 
-  return (
+  const card = (
     <article
       id={venue.id ? `venue-${venue.id}` : undefined}
       className="arena-glass-card scroll-mt-24"
@@ -51,5 +52,13 @@ export function ArenaGlassCard({ venue, index }: ArenaGlassCardProps) {
         ) : null}
       </div>
     </article>
+  );
+
+  if (!venue.id) return card;
+
+  return (
+    <Link href={`/arenas/${venue.id}`} className="arena-glass-card-link">
+      {card}
+    </Link>
   );
 }

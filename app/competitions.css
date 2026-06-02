@@ -3834,6 +3834,16 @@
   transition: transform 0.2s ease;
 }
 
+.arena-glass-card-link:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 3px;
+  border-radius: 0.65rem;
+}
+
+.arena-glass-card-link:hover .arena-glass-card {
+  transform: translateY(-2px);
+}
+
 .arena-glass-card:hover {
   transform: translateY(-2px);
 }

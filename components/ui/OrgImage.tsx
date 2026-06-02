@@ -7,6 +7,8 @@ interface OrgImageProps {
   height?: number;
   className?: string;
   fill?: boolean;
+  /** Qualidade do otimizador (1–100). Padrão 90. */
+  quality?: number;
 }
 
 export function OrgImage({
@@ -16,7 +18,11 @@ export function OrgImage({
   height = 48,
   className,
   fill = false,
+  quality = 90,
 }: OrgImageProps) {
+  const isSmall = !fill && width <= 28 && height <= 28;
+  const renderWidth = isSmall ? Math.max(width * 3, 48) : width;
+  const renderHeight = isSmall ? Math.max(height * 3, 48) : height;
   if (!src) {
     return (
       <div
@@ -47,9 +53,16 @@ export function OrgImage({
     <Image
       src={src}
       alt={alt}
-      width={width}
-      height={height}
+      width={renderWidth}
+      height={renderHeight}
+      quality={quality}
+      sizes={isSmall ? `${width}px` : undefined}
       className={className}
+      style={
+        isSmall
+          ? { width, height, maxWidth: width, maxHeight: height }
+          : undefined
+      }
     />
   );
 }
