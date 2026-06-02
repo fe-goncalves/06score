@@ -1,6 +1,5 @@
-import Link from "next/link";
-import { CompetitionsGrid } from "@/components/home/CompetitionsGrid";
-import { SectionTitle } from "@/components/ui/SectionTitle";
+import { CompetitionsListClient } from "@/components/competition/CompetitionsListClient";
+import { SiteListHero } from "@/components/layout/SiteListHero";
 import { getCompetitionsList } from "@/lib/data/competition";
 import { getOrgSlug, getOrganization } from "@/lib/org";
 
@@ -18,17 +17,13 @@ export default async function CompetitionsListPage() {
   const competitions = await getCompetitionsList(org.id);
 
   return (
-    <div className="page-container py-8 md:py-10">
-      <Link
-        href="/"
-        className="mb-8 inline-block text-[11px] font-bold uppercase tracking-widest text-white/50 transition-colors hover:text-[var(--color-brand)]"
-      >
-        ← Voltar
-      </Link>
-      <SectionTitle>Competições</SectionTitle>
-      <div className="mt-8">
-        <CompetitionsGrid competitions={competitions} />
-      </div>
+    <div className="site-list-page competitions-page">
+      <SiteListHero
+        eyebrow="Campeonatos"
+        title="Competições"
+        description={`Acompanhe classificação, jogos, chaveamento e estatísticas de cada campeonato da ${org.name}.`}
+      />
+      <CompetitionsListClient competitions={competitions} />
     </div>
   );
 }

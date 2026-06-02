@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useClientTab } from "@/lib/navigation/useClientTab";
 
 export interface TabItem {
   id: string;
@@ -11,25 +11,23 @@ interface PageTabsProps {
   tabs: TabItem[];
   defaultTab: string;
   paramName?: string;
+  activeTab?: string;
+  onTabChange?: (id: string) => void;
 }
 
 export function PageTabs({
   tabs,
   defaultTab,
   paramName = "tab",
+  activeTab: controlledActive,
+  onTabChange,
 }: PageTabsProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const active = searchParams.get(paramName) ?? defaultTab;
-
-  function setTab(id: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set(paramName, id);
-    router.replace(`?${params.toString()}`, { scroll: false });
-  }
+  const clientTab = useClientTab(defaultTab, paramName);
+  const active = controlledActive ?? clientTab.tab;
+  const setTab = onTabChange ?? clientTab.setTab;
 
   return (
-    <div className="flex gap-1 overflow-x-auto border-b border-white/[0.06] scrollbar-hide">
+    <div className="flex gap-1 overflow-x-auto border-b border-white/[0.06]">
       {tabs.map((tab) => {
         const isActive = active === tab.id;
         return (
@@ -51,10 +49,10 @@ export function PageTabs({
   );
 }
 
+/** @deprecated Prefira useClientTab — evita refetch do servidor ao trocar aba. */
 export function useActiveTab(
   defaultTab: string,
   paramName = "tab",
 ): string {
-  const searchParams = useSearchParams();
-  return searchParams.get(paramName) ?? defaultTab;
+  return useClientTab(defaultTab, paramName).tab;
 }

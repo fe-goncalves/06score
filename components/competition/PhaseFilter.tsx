@@ -1,48 +1,49 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import type { Phase } from "@/lib/types";
 
 interface PhaseFilterProps {
   phases: Phase[];
   selectedPhaseId: string | null;
   onChange: (phaseId: string | null) => void;
+  accentColor?: string | null;
 }
 
 export function PhaseFilter({
   phases,
   selectedPhaseId,
   onChange,
+  accentColor,
 }: PhaseFilterProps) {
+  const accent = accentColor ?? "var(--color-brand)";
+
   return (
-    <div className="mb-6 flex flex-wrap items-center gap-2">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">
-        Fase:
-      </span>
-      <button
-        type="button"
-        onClick={() => onChange(null)}
-        className={`rounded px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-          selectedPhaseId === null
-            ? "bg-[var(--color-brand)] text-black"
-            : "card-surface text-white/60 hover:text-white"
-        }`}
-      >
-        Todas
-      </button>
-      {phases.map((phase) => (
+    <div className="competition-hub-tabs mb-6 scrollbar-hide">
+      <div className="competition-hub-tabs-track">
+        <span className="mr-1 shrink-0 self-center font-mono-label text-[8px] font-bold uppercase tracking-widest text-white/35">
+          Fase
+        </span>
         <button
-          key={phase.id}
           type="button"
-          onClick={() => onChange(phase.id)}
-          className={`rounded px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-            selectedPhaseId === phase.id
-              ? "bg-[var(--color-brand)] text-black"
-              : "card-surface text-white/60 hover:text-white"
-          }`}
+          onClick={() => onChange(null)}
+          className={`competition-hub-tab ${selectedPhaseId === null ? "competition-hub-tab-active" : ""}`}
+          style={{ "--tab-accent": accent } as CSSProperties}
         >
-          {phase.custom_label ?? phase.full_name}
+          Todas
         </button>
-      ))}
+        {phases.map((phase) => (
+          <button
+            key={phase.id}
+            type="button"
+            onClick={() => onChange(phase.id)}
+            className={`competition-hub-tab ${selectedPhaseId === phase.id ? "competition-hub-tab-active" : ""}`}
+            style={{ "--tab-accent": accent } as CSSProperties}
+          >
+            {phase.custom_label ?? phase.full_name}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

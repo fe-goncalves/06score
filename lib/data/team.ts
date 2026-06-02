@@ -1,5 +1,5 @@
 import { getActiveEditionId } from "@/lib/data/home";
-import { getPhaseIdsForOrg } from "@/lib/data/shared";
+import { fetchEditionTeamsForEdition, getPhaseIdsForOrg } from "@/lib/data/shared";
 import { getSupabase } from "@/lib/supabase";
 import type {
   Athlete,
@@ -19,30 +19,12 @@ export async function getTeamsList(orgId: string): Promise<TeamListItem[]> {
   const editionId = await getActiveEditionId(orgId);
   if (!editionId) return [];
 
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from("edition_teams")
-    .select(
-      `
-      team_id,
-      teams(id, full_name, short_name, abbreviation, logo_url, primary_color)
-    `,
-    )
-    .eq("edition_id", editionId)
-    .eq("is_free_agent_pool", false)
-    .order("display_order", { ascending: true });
+  const rows = await fetchEditionTeamsForEdition(editionId);
 
-  if (error) {
-    console.error("[getTeamsList]", error.message);
-    return [];
-  }
-
-  return (data ?? [])
+  return rows
     .map((row) => {
-      const teamsRaw = row.teams as Team | Team[] | null;
-      const team = Array.isArray(teamsRaw) ? teamsRaw[0] : teamsRaw;
-      if (!team) return null;
-      return { id: row.team_id as string, team };
+      if (!row.teams) return null;
+      return { id: row.team_id, team: row.teams };
     })
     .filter((row): row is TeamListItem => row !== null);
 }

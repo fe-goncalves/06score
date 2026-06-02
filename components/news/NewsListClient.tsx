@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { NewsCard } from "@/components/news/NewsCard";
+import type { CSSProperties } from "react";
+import { NewsJournalCard } from "@/components/news/NewsJournalCard";
+import { SectionEnter } from "@/components/ui/SectionEnter";
 import type { NewsArticleListItem } from "@/lib/types";
 
 interface NewsListClientProps {
@@ -17,47 +19,58 @@ export function NewsListClient({ articles, competitions }: NewsListClientProps) 
     return articles.filter((a) => a.competition_ids.includes(filter));
   }, [articles, filter]);
 
+  const [featured, ...rest] = filtered;
+
   return (
-    <div>
+    <SectionEnter className="page-container pb-14 pt-2">
       {competitions.length > 1 && (
-        <div className="mb-8 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setFilter("")}
-            className={`rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-              !filter
-                ? "bg-[var(--color-brand)] text-black"
-                : "border border-white/20 text-white/60 hover:border-white/40 hover:text-white/90"
-            }`}
-          >
-            Todas
-          </button>
-          {competitions.map((c) => (
+        <div className="news-list-filters competition-hub-tabs scrollbar-hide">
+          <div className="competition-hub-tabs-track">
             <button
-              key={c.id}
               type="button"
-              onClick={() => setFilter(c.id)}
-              className={`rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                filter === c.id
-                  ? "bg-[var(--color-brand)] text-black"
-                  : "border border-white/20 text-white/60 hover:border-white/40 hover:text-white/90"
-              }`}
+              onClick={() => setFilter("")}
+              className={`competition-hub-tab ${!filter ? "competition-hub-tab-active" : ""}`}
+              style={{ "--tab-accent": "var(--color-brand)" } as CSSProperties}
             >
-              {c.short_name ?? c.full_name}
+              Todas
             </button>
-          ))}
+            {competitions.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setFilter(c.id)}
+                className={`competition-hub-tab ${filter === c.id ? "competition-hub-tab-active" : ""}`}
+                style={{ "--tab-accent": "var(--color-brand)" } as CSSProperties}
+              >
+                {c.short_name ?? c.full_name}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       {!filtered.length ? (
-        <p className="text-sm text-white/40">Nenhuma notícia encontrada.</p>
+        <p className="font-mono-label text-xs text-white/40">
+          Nenhuma notícia encontrada.
+        </p>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((article) => (
-            <NewsCard key={article.id} article={article} />
-          ))}
-        </div>
+        <>
+          {featured && (
+            <div className="news-list-featured">
+              <NewsJournalCard article={featured} featured />
+            </div>
+          )}
+          {rest.length > 0 && (
+            <div className="news-list-grid">
+              {rest.map((article) => (
+                <div key={article.id} className="news-list-grid-item">
+                  <NewsJournalCard article={article} />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
-    </div>
+    </SectionEnter>
   );
 }

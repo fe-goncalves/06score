@@ -1,8 +1,17 @@
+import {
+  isStrictGoalActionType,
+  resolveActionPeriod,
+} from "@/lib/match/actionTypes";
+import {
+  computePointsPct,
+  enrichStandingRows,
+} from "@/lib/competition/standingsForm";
 import type {
   Match,
   MatchAction,
   StandingRow,
   Team,
+  TeamEditionStats,
   TimelineEntry,
 } from "@/lib/types";
 
@@ -20,6 +29,41 @@ export function formatMatchDateTime(
     hour: "2-digit",
     minute: "2-digit",
   });
+  return `${datePart} · ${timePart}`;
+}
+
+/** Fase e rodada para listagens compactas de jogos. */
+export function formatMatchPhaseRoundLabel(match: {
+  phases: {
+    custom_label?: string | null;
+    full_name?: string;
+  } | null;
+  rounds?: {
+    custom_label?: string | null;
+    name?: string;
+  } | null;
+}): string {
+  const phaseName =
+    match.phases?.custom_label ?? match.phases?.full_name ?? "";
+  const roundName =
+    match.rounds?.custom_label ?? match.rounds?.name ?? "";
+  return [phaseName, roundName].filter(Boolean).join(" · ") || "—";
+}
+
+/** Data em destaque para cards compactos do hero (ex.: "30 DE MAI · 05:00"). */
+export function formatHeroMatchDate(
+  matchDate: string,
+  matchTime: string | null,
+): string {
+  const date = new Date(`${matchDate}T${matchTime ?? "12:00:00"}`);
+  const day = date.toLocaleDateString("pt-BR", { day: "2-digit" });
+  const month = date
+    .toLocaleDateString("pt-BR", { month: "short" })
+    .replace(/\./g, "")
+    .toUpperCase();
+  const datePart = `${day} DE ${month}`;
+  if (!matchTime) return datePart;
+  const timePart = matchTime.slice(0, 5);
   return `${datePart} · ${timePart}`;
 }
 
@@ -45,6 +89,67 @@ export function athleteDisplayName(
   surname: string | null,
 ): string {
   return surname ? `${fullName} ${surname}` : fullName;
+}
+
+/** Sobrenome em destaque (linha do tempo, placar). */
+export function athleteSurnameLabel(
+  fullName: string,
+  surname: string | null,
+): string {
+  if (surname?.trim()) return surname.trim().toUpperCase();
+  const parts = fullName.trim().split(/\s+/);
+  return (parts[parts.length - 1] ?? fullName).toUpperCase();
+}
+
+/** Cabeçalho da partida: DD/MM/AAAA | HH:MM */
+export function formatMatchHeaderDateTime(
+  matchDate: string,
+  matchTime: string | null,
+): string {
+  const date = new Date(`${matchDate}T${matchTime ?? "12:00:00"}`);
+  const datePart = date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  if (!matchTime) return datePart;
+  return `${datePart} | ${matchTime.slice(0, 5)}`;
+}
+
+export function matchStatusLabel(status: string): string {
+  const key = status.toLowerCase();
+  const map: Record<string, string> = {
+    scheduled: "Agendado",
+    agendado: "Agendado",
+    live: "Ao vivo",
+    ao_vivo: "Ao vivo",
+    in_progress: "Ao vivo",
+    ongoing: "Ao vivo",
+    finished: "Finalizado",
+    finalizado: "Finalizado",
+    ended: "Finalizado",
+    ft: "Finalizado",
+    complete: "Finalizado",
+    postponed: "Adiado",
+    cancelled: "Cancelado",
+    cancelado: "Cancelado",
+  };
+  return map[key] ?? status;
+}
+
+/** Ex.: "Rodada 5" → "MOTW DA RODADA 5" */
+export function formatMotwRoundLabel(roundLabel: string | null): string {
+  if (!roundLabel?.trim()) return "MOTW";
+
+  const label = roundLabel.trim();
+  if (/rodada/i.test(label)) {
+    return `MOTW DA ${label.replace(/^rodada\s*/i, "RODADA ").toUpperCase()}`;
+  }
+
+  const roundNumber = label.match(/\d+/)?.[0];
+  if (roundNumber) return `MOTW DA RODADA ${roundNumber}`;
+
+  return `MOTW DA ${label.toUpperCase()}`;
 }
 
 export function isMatchFinished(status: string): boolean {
@@ -125,7 +230,13 @@ export function getActionIcon(actionType: string): string {
 }
 
 export function isGoalAction(actionType: string): boolean {
-  return actionType.toLowerCase() === "goal";
+  const t = actionType
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s+/g, "_");
+  return t === "goal" || t === "gol";
 }
 
 export function sortStandings(rows: StandingRow[]): StandingRow[] {
@@ -143,17 +254,8 @@ export function sortStandings(rows: StandingRow[]): StandingRow[] {
 }
 
 export function statsToStandings(
-  stats: {
-    team_id: string;
-    teams: Team | null;
-    matches_played: number;
-    wins: number;
-    draws: number;
-    losses: number;
-    goals_scored: number;
-    goals_conceded: number;
-    points: number;
-  }[],
+  stats: TeamEditionStats[],
+  matches: Match[] = [],
 ): StandingRow[] {
   const rows: StandingRow[] = stats
     .filter((s) => s.teams)
@@ -169,14 +271,22 @@ export function statsToStandings(
       goals_conceded: s.goals_conceded,
       goal_difference: s.goals_scored - s.goals_conceded,
       points: s.points,
+      yellow_cards: s.yellow_cards ?? 0,
+      red_cards: s.red_cards ?? 0,
+      points_pct: computePointsPct(s.points, s.matches_played),
+      form: [] as StandingRow["form"],
     }));
-  return sortStandings(rows);
+  const sorted = sortStandings(rows);
+  return matches.length
+    ? enrichStandingRows(sorted, matches, stats)
+    : sorted;
 }
 
 export function computeStandingsFromMatches(
   matches: Match[],
   teamIds: string[],
   teamsMap: Record<string, Team>,
+  editionStats?: TeamEditionStats[],
 ): StandingRow[] {
   const table: Record<
     string,
@@ -235,14 +345,17 @@ export function computeStandingsFromMatches(
     team: teamsMap[team_id],
     goal_difference: row.goals_scored - row.goals_conceded,
     position: 0,
+    yellow_cards: 0,
+    red_cards: 0,
   }));
 
-  return sortStandings(rows);
+  return enrichStandingRows(sortStandings(rows), matches, editionStats);
 }
 
 function actionSortKey(a: MatchAction): number {
-  const periodOrder = a.period === "second" ? 1 : 0;
   const minute = a.minute ?? 0;
+  const periodOrder =
+    resolveActionPeriod(a.period, a.minute) === "second" ? 1 : 0;
   return periodOrder * 1000 + minute;
 }
 
@@ -256,12 +369,9 @@ export function buildTimelineWithScore(
   const sorted = [...actions].sort((a, b) => actionSortKey(a) - actionSortKey(b));
 
   return sorted.map((action) => {
-    if (isGoalAction(action.action_type) && !action.is_own_goal) {
+    if (isStrictGoalActionType(action.action_type)) {
       if (action.team_id === teamAId) scoreA += 1;
       else scoreB += 1;
-    } else if (isGoalAction(action.action_type) && action.is_own_goal) {
-      if (action.team_id === teamAId) scoreB += 1;
-      else scoreA += 1;
     }
 
     return {
@@ -313,6 +423,7 @@ export const PHASE_SELECT = `
       full_name,
       short_name,
       logo_url,
+      primary_color,
       organization_id
     )
   )

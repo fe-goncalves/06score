@@ -1,3 +1,10 @@
+import {
+  countsAsPeriodFoul,
+  isStrictGoalActionType,
+  isRedCardActionType,
+  isYellowCardActionType,
+  isYellowRedCardActionType,
+} from "@/lib/match/actionTypes";
 import type { Match, MatchAction, MatchTeamStatsRow } from "@/lib/types";
 
 interface MatchTeamStatsProps {
@@ -17,18 +24,15 @@ function countStats(
 
   for (const a of actions) {
     if (a.team_id !== teamId) continue;
-    const t = a.action_type.toLowerCase();
-    if (t === "goal" && !a.is_own_goal) goals += 1;
-    if (t === "goal" && a.is_own_goal) continue;
-    if (t === "yellow_card") yellow_cards += 1;
+    if (isStrictGoalActionType(a.action_type)) goals += 1;
+    if (isYellowCardActionType(a.action_type)) yellow_cards += 1;
     if (
-      t === "red_card" ||
-      t === "yellow_red_card" ||
-      t === "red_yellow_card"
+      isRedCardActionType(a.action_type) ||
+      isYellowRedCardActionType(a.action_type)
     ) {
       red_cards += 1;
     }
-    if (t === "foul") fouls += 1;
+    if (countsAsPeriodFoul(a.action_type)) fouls += 1;
   }
 
   return { goals, yellow_cards, red_cards, fouls };

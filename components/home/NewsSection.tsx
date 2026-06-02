@@ -91,7 +91,7 @@ export function NewsSection({ articles }: NewsSectionProps) {
       <div className="page-edge-x space-y-3 md:hidden">
         <NewsHeroCard article={hero} />
         {rest.length > 0 && (
-          <div className="flex gap-3 overflow-x-auto pb-1 snap-x-mandatory scrollbar-hide">
+          <div className="flex gap-3 overflow-x-auto pb-1 snap-x-mandatory">
             {rest.map((article) => (
               <NewsSecondaryCard key={article.id} article={article} />
             ))}

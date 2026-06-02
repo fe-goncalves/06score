@@ -5,6 +5,8 @@ import { CompetitionSelector } from "@/components/layout/CompetitionSelector";
 import { HomeHero } from "@/components/home/HomeHero";
 import { LeadersSection } from "@/components/home/LeadersSection";
 import { MatchResultsStrip } from "@/components/home/MatchResultsStrip";
+import { HomeActiveCompetitionsSection } from "@/components/home/HomeActiveCompetitionsSection";
+import { HomeTotwSection } from "@/components/home/HomeTotwSection";
 import { NewsJournalSection } from "@/components/home/NewsJournalSection";
 import { SponsorsSection } from "@/components/home/SponsorsSection";
 import { TeamsLogoCarousel } from "@/components/home/TeamsLogoCarousel";
@@ -17,12 +19,15 @@ import type {
   HomeSponsor,
   Organization,
 } from "@/lib/types";
+import { HERO_NEWS_COUNT } from "@/lib/home/news";
 import type { CompetitionFilterId } from "@/lib/home/filters";
+import { standingsWithPhaseForm } from "@/lib/competition/mergePhaseStandings";
 import {
   filterMatches,
   filterNews,
   getActiveCompetitionMeta,
   getLatestMotwForFilter,
+  getLatestTotwForFilter,
   getLeadersForFilter,
   resolveEditionData,
   getStandingsForFilter,
@@ -66,6 +71,20 @@ export function HomeClient({
     [editionsByCompetition, competitions, selectedId],
   );
 
+  const currentEditionData = useMemo(
+    () => resolveEditionData(editionsByCompetition, competitions, selectedId),
+    [editionsByCompetition, competitions, selectedId],
+  );
+
+  const standingsForTable = useMemo(
+    () =>
+      standingsWithPhaseForm(
+        standings,
+        currentEditionData?.phaseMatches ?? [],
+      ),
+    [standings, currentEditionData?.phaseMatches],
+  );
+
   const teams = useMemo(
     () => getTeamsForFilter(editionsByCompetition, competitions, selectedId),
     [editionsByCompetition, competitions, selectedId],
@@ -82,19 +101,22 @@ export function HomeClient({
     [editionsByCompetition, competitions, selectedId],
   );
 
-  const currentEditionData = useMemo(
-    () => resolveEditionData(editionsByCompetition, competitions, selectedId),
-    [editionsByCompetition, competitions, selectedId],
-  );
-
   const latestMotw = useMemo(
     () =>
       getLatestMotwForFilter(editionsByCompetition, competitions, selectedId),
     [editionsByCompetition, competitions, selectedId],
   );
 
+  const latestTotw = useMemo(
+    () =>
+      getLatestTotwForFilter(editionsByCompetition, competitions, selectedId),
+    [editionsByCompetition, competitions, selectedId],
+  );
+
+  const activeCompetitionId = selectedId ?? competitionMeta?.id ?? null;
+
   return (
-    <div>
+    <div className="home-page">
       <MatchResultsStrip
         recent={filteredMatches.recent}
         upcoming={filteredMatches.upcoming}
@@ -108,8 +130,8 @@ export function HomeClient({
 
       <HomeHero
         articles={filteredNews}
-        standings={standings}
-        upcoming={filteredMatches.upcoming}
+        standings={standingsForTable}
+        upcoming={matches.upcoming}
         latestMotw={latestMotw}
         competitionId={competitionMeta?.id ?? null}
         competitionName={competitionMeta?.name ?? ""}
@@ -118,17 +140,27 @@ export function HomeClient({
 
       <NewsJournalSection
         articles={filteredNews}
-        skipCount={3}
-        competitionId={competitionMeta?.id ?? null}
+        skipCount={HERO_NEWS_COUNT}
+        competitionId={activeCompetitionId}
         competitionName={competitionMeta?.name ?? ""}
         competitionColor={competitionMeta?.primaryColor ?? null}
         competitionLogoUrl={competitionMeta?.logoUrl ?? null}
         editionName={currentEditionData?.editionName ?? null}
         phaseName={currentEditionData?.currentPhaseName ?? null}
-        standings={standings}
+        standings={standingsForTable}
         currentPhaseType={currentEditionData?.currentPhaseType ?? null}
         phaseMatches={currentEditionData?.phaseMatches ?? []}
         phaseMatchups={currentEditionData?.phaseMatchups ?? []}
+      />
+
+      <HomeActiveCompetitionsSection competitions={competitions} />
+
+      <HomeTotwSection
+        totw={latestTotw}
+        competitions={competitions}
+        competitionName={competitionMeta?.name ?? ""}
+        competitionColor={competitionMeta?.primaryColor ?? null}
+        competitionLogoUrl={competitionMeta?.logoUrl ?? null}
       />
 
       <LeadersSection

@@ -1,3 +1,16 @@
+import {
+  fetchH2HMatches,
+  fetchNextTeamMatch,
+} from "@/lib/data/match-fixtures";
+import { fetchMatchStaffLineups } from "@/lib/data/match-staff-lineups";
+import {
+  fetchEditionTeamsByIds,
+  type EditionTeamLineupEmbed,
+} from "@/lib/data/shared";
+import {
+  buildPeriodFoulCounts,
+  type MatchTeamPeriodStat,
+} from "@/lib/match/periodFouls";
 import { getSupabase } from "@/lib/supabase";
 import type {
   Match,
@@ -5,13 +18,52 @@ import type {
   MatchAthleteRating,
   MatchDetailData,
   MatchLineup,
+  MatchPageData,
+  MatchStaffLineup,
 } from "@/lib/types";
 import { MATCH_SELECT_BASE, PHASE_SELECT } from "@/lib/utils";
 
 const MATCH_DETAIL_SELECT = `
   ${MATCH_SELECT_BASE},
-  venues(full_name, address)
+  motm_athlete_id,
+  motm_team_id,
+  motm_athlete:athletes!matches_motm_athlete_id_fkey(id, full_name, surname, photo_url),
+  motm_team:teams!matches_motm_team_id_fkey(id, full_name, short_name, abbreviation, logo_url),
+  venues(id, full_name, address)
 `;
+
+const MATCH_LINEUP_SELECT = `
+  match_id,
+  athlete_id,
+  edition_team_id,
+  is_present,
+  played_as_goalkeeper,
+  is_captain,
+  match_rating,
+  athletes(id, full_name, surname, photo_url, player_positions(full_name, abbreviation))
+`;
+
+type RawMatchLineup = Omit<MatchLineup, "edition_teams">;
+
+function attachEditionTeamsToLineups(
+  rows: RawMatchLineup[],
+  lookup: Map<string, EditionTeamLineupEmbed>,
+): MatchLineup[] {
+  return rows.map((row) => ({
+    ...row,
+    edition_teams: lookup.get(row.edition_team_id) ?? null,
+  }));
+}
+
+function collectEditionTeamIds(lineups: RawMatchLineup[]): string[] {
+  return [
+    ...new Set(
+      lineups
+        .map((row) => row.edition_team_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+}
 
 export async function getMatchDetail(
   matchId: string,
@@ -40,32 +92,29 @@ export async function getMatchDetail(
   const teamAId = m.team_a_id ?? "";
   const teamBId = m.team_b_id ?? "";
 
-  const [lineupsResult, ratingsResult, actionsResult] = await Promise.all([
-    supabase
-      .from("match_lineups")
-      .select(
-        `
-        match_id,
-        athlete_id,
-        edition_team_id,
-        is_present,
-        played_as_goalkeeper,
-        is_captain,
-        athletes(id, full_name, surname, photo_url, player_positions(full_name, abbreviation)),
-        edition_teams(team_id, teams(full_name, short_name, logo_url))
-      `,
-      )
-      .eq("match_id", matchId)
-      .eq("is_present", true),
-    supabase
-      .from("match_athlete_ratings")
-      .select("match_id, athlete_id, rating, is_public")
-      .eq("match_id", matchId)
-      .eq("is_public", true),
-    supabase
-      .from("match_actions")
-      .select(
-        `
+  const [
+    lineupsResult,
+    ratingsResult,
+    actionsResult,
+    teamStatsResult,
+    staffLineups,
+    h2hMatches,
+    nextGameA,
+    nextGameB,
+  ] = await Promise.all([
+      supabase
+        .from("match_lineups")
+        .select(MATCH_LINEUP_SELECT)
+        .eq("match_id", matchId)
+        .eq("is_present", true),
+      supabase
+        .from("match_athlete_ratings")
+        .select("athlete_id, rating, edition_team_id")
+        .eq("match_id", matchId),
+      supabase
+        .from("match_actions")
+        .select(
+          `
         id,
         match_id,
         team_id,
@@ -73,15 +122,26 @@ export async function getMatchDetail(
         minute,
         period,
         primary_athlete_id,
+        secondary_athlete_id,
         goal_type,
         is_own_goal,
-        athletes:athletes!match_actions_primary_athlete_id_fkey(full_name, surname, photo_url)
+        miss_result,
+        athletes:athletes!match_actions_primary_athlete_id_fkey(full_name, surname, photo_url),
+        secondary_athletes:athletes!match_actions_secondary_athlete_id_fkey(full_name, surname, photo_url)
       `,
-      )
-      .eq("match_id", matchId)
-      .order("period", { ascending: true })
-      .order("minute", { ascending: true }),
-  ]);
+        )
+        .eq("match_id", matchId)
+        .order("period", { ascending: true })
+        .order("minute", { ascending: true }),
+      supabase
+        .from("match_team_stats")
+        .select("team_id, period, fouls, avg_rating, rated_athletes_count")
+        .eq("match_id", matchId),
+      fetchMatchStaffLineups(matchId),
+      fetchH2HMatches(teamAId, teamBId, matchId),
+      fetchNextTeamMatch(teamAId),
+      fetchNextTeamMatch(teamBId),
+    ]);
 
   if (lineupsResult.error) {
     console.error("[getMatchDetail lineups]", lineupsResult.error.message);
@@ -92,15 +152,44 @@ export async function getMatchDetail(
   if (actionsResult.error) {
     console.error("[getMatchDetail actions]", actionsResult.error.message);
   }
+  if (teamStatsResult.error) {
+    console.error("[getMatchDetail team stats]", teamStatsResult.error.message);
+  }
+
+  const rawLineups = (lineupsResult.data as RawMatchLineup[] | null) ?? [];
+
+  const editionTeamsMap = await fetchEditionTeamsByIds(
+    collectEditionTeamIds(rawLineups),
+  );
+
+  const lineups = attachEditionTeamsToLineups(rawLineups, editionTeamsMap);
+
+  const actions = (actionsResult.data as MatchAction[] | null) ?? [];
+  const teamStats =
+    (teamStatsResult.data as MatchTeamPeriodStat[] | null) ?? [];
+  const periodFoulCounts = buildPeriodFoulCounts(teamStats, teamAId);
 
   return {
     match: m,
-    lineups: (lineupsResult.data as MatchLineup[] | null) ?? [],
+    lineups,
+    staffLineups,
     ratings: (ratingsResult.data as MatchAthleteRating[] | null) ?? [],
-    actions: (actionsResult.data as MatchAction[] | null) ?? [],
+    actions,
     teamAId,
     teamBId,
+    periodFoulCounts,
+    teamStats,
+    h2hMatches,
+    nextGameA,
+    nextGameB,
   };
+}
+
+export async function getMatchPageData(
+  matchId: string,
+  orgId: string,
+): Promise<MatchPageData | null> {
+  return getMatchDetail(matchId, orgId);
 }
 
 export async function assertOrgOwnsMatch(

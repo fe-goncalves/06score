@@ -10,11 +10,15 @@ interface HighlightStatCardProps {
   stat: number;
   name: string;
   subtitle?: string | null;
+  teamLogoUrl?: string | null;
+  teamName?: string | null;
   imageUrl?: string | null;
   href?: string;
   accentColor?: string | null;
   watermark?: string;
   emptyMessage?: string;
+  /** 'muted' para fallback (ex.: mais vitórias, sem título de campeão). */
+  subtitleTone?: "default" | "muted";
 }
 
 function animateCount(
@@ -64,11 +68,14 @@ export function HighlightStatCard({
   stat,
   name,
   subtitle,
+  teamLogoUrl,
+  teamName,
   imageUrl,
   href,
   accentColor,
   watermark,
   emptyMessage,
+  subtitleTone = "default",
 }: HighlightStatCardProps) {
   const { ref, isInView } = useInView<HTMLElement>();
   const [displayStat, setDisplayStat] = useState(0);
@@ -129,6 +136,17 @@ export function HighlightStatCard({
       <div className="highlight-card-vignette" aria-hidden="true" />
 
       <div className="highlight-card-content relative z-10 flex min-h-0 flex-1 flex-col p-4">
+        {teamLogoUrl ? (
+          <div className="highlight-card-team-logo" aria-hidden="true">
+            <OrgImage
+              src={teamLogoUrl}
+              alt={teamName ?? "Time"}
+              width={36}
+              height={36}
+              className="h-9 w-9 object-contain"
+            />
+          </div>
+        ) : null}
         <span
           className="font-mono-label text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--highlight-color)]"
           style={{
@@ -147,7 +165,11 @@ export function HighlightStatCard({
             {name}
           </p>
           {subtitle ? (
-            <p className="font-mono-label mt-1 line-clamp-2 text-[8px] uppercase text-white/65">
+            <p
+              className={`font-mono-label mt-1 line-clamp-2 text-[8px] uppercase ${
+                subtitleTone === "muted" ? "text-white/40" : "text-white/65"
+              }`}
+            >
               {subtitle}
             </p>
           ) : null}

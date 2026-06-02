@@ -1,0 +1,413 @@
+/* TOTW home section — lightweight styles */
+
+.totw-desktop-split {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .totw-desktop-split {
+    display: grid;
+    grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+}
+
+.totw-competitions-stack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+@media (min-width: 1024px) {
+  .totw-competitions-stack {
+    grid-template-columns: 1fr;
+  }
+}
+
+.competition-glass-card {
+  position: relative;
+  display: block;
+  border-radius: 0.65rem;
+  padding: 1px;
+  text-decoration: none;
+  color: inherit;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--comp-color) 70%, transparent),
+    rgba(255, 255, 255, 0.08) 45%,
+    color-mix(in srgb, var(--comp-color) 55%, transparent)
+  );
+  background-size: 200% 200%;
+  animation: competition-glass-border 5s ease infinite;
+}
+
+.competition-glass-card-inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  overflow: hidden;
+  border-radius: calc(0.65rem - 1px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(12, 18, 25, 0.72);
+  backdrop-filter: blur(14px);
+  padding: 0.7rem 0.75rem;
+  transition:
+    background-color 0.25s ease,
+    transform 0.25s ease;
+}
+
+.competition-glass-card-glow {
+  position: absolute;
+  inset: -40% auto auto -20%;
+  width: 70%;
+  height: 120%;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--comp-color) 28%, transparent),
+    transparent 70%
+  );
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.competition-glass-card-logo {
+  position: relative;
+  z-index: 1;
+  height: 2.75rem;
+  width: 2.75rem;
+  flex-shrink: 0;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+.competition-glass-card:hover .competition-glass-card-inner {
+  background: rgba(16, 22, 30, 0.88);
+  transform: translateY(-2px);
+}
+
+.competition-glass-card:hover .competition-glass-card-glow {
+  opacity: 0.9;
+}
+
+.competition-glass-card:hover .competition-glass-card-logo {
+  transform: scale(1.06);
+}
+
+@keyframes competition-glass-border {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.home-totw-section .totw-panel {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.65rem;
+  background: linear-gradient(165deg, #0c1219 0%, #070b12 100%);
+  padding: 0.65rem;
+}
+
+@media (min-width: 768px) {
+  .home-totw-section .totw-panel {
+    padding: 0.85rem;
+  }
+}
+
+.totw-competition-logo {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.25rem;
+}
+
+.totw-meta-pill {
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 0.2rem 0.55rem;
+}
+
+.totw-pitch-desktop {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.totw-pitch-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 700 / 380;
+  max-height: 300px;
+  overflow: hidden;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #05080d;
+}
+
+.totw-pitch-desktop-compact .totw-pitch-frame {
+  max-height: none;
+}
+
+.totw-pitch-desktop-compact .totw-desktop-footer {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.totw-pitch-desktop-compact .totw-desktop-coach,
+.totw-pitch-desktop-compact .totw-desktop-motw {
+  width: 100%;
+}
+
+.totw-pitch-inner {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.totw-pitch-inner .totw-pitch-slot {
+  pointer-events: auto;
+}
+
+.totw-pitch-slot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.totw-desktop-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.totw-desktop-coach {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.22);
+  padding: 0.45rem 0.6rem;
+}
+
+.totw-desktop-motw {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(191, 242, 5, 0.2);
+  background: rgba(191, 242, 5, 0.06);
+  padding: 0.45rem 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.totw-desktop-motw:hover {
+  background: rgba(191, 242, 5, 0.12);
+}
+
+.totw-player-card {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-decoration: none;
+  color: inherit;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.totw-player-card--mobile {
+  width: 100%;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 0.75rem 0.85rem;
+}
+
+.totw-player-card--mobile.totw-player-card--motw {
+  border-color: rgba(191, 242, 5, 0.28);
+  background: rgba(191, 242, 5, 0.05);
+}
+
+.totw-player-card--mobile:hover,
+.totw-player-card--mobile:focus-visible {
+  border-color: color-mix(
+    in srgb,
+    var(--totw-color, var(--color-brand)) 35%,
+    rgba(255, 255, 255, 0.1)
+  );
+  background: rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.totw-player-card--mobile.totw-player-card--static {
+  cursor: default;
+}
+
+.totw-player-card--pitch {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.15rem;
+}
+
+.totw-player-card--pitch:hover,
+.totw-player-card--pitch:focus-visible {
+  transform: translateY(-2px);
+}
+
+.totw-player-card--pitch:hover .totw-player-avatar-wrap,
+.totw-player-card--pitch:focus-visible .totw-player-avatar-wrap {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 10px rgba(191, 242, 5, 0.25);
+}
+
+.totw-player-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.45);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.totw-player-avatar-wrap--motw {
+  border-color: var(--color-brand);
+}
+
+.totw-player-team-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  z-index: 2;
+  display: flex;
+  height: 18px;
+  width: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.75);
+  padding: 1px;
+}
+
+.totw-player-card--pitch .totw-player-team-badge {
+  height: 16px;
+  width: 16px;
+}
+
+.totw-player-motw-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  z-index: 3;
+  display: flex;
+  height: 14px;
+  width: 14px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--color-brand);
+  background: var(--color-brand);
+  font-size: 8px;
+  line-height: 1;
+  color: #0d0d0d;
+}
+
+.totw-player-pitch-name {
+  max-width: 3.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.totw-player-pitch-name--motw {
+  color: var(--color-brand);
+}
+
+.totw-player-list-grid,
+.totw-mobile-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+@media (min-width: 768px) {
+  .totw-player-list-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+}
+
+.totw-mobile-coach {
+  margin-top: 0.65rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 0.65rem 0.75rem;
+}
+
+.totw-mobile-motw {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(191, 242, 5, 0.2);
+  background: rgba(191, 242, 5, 0.06);
+  padding: 0.45rem 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.totw-mobile-motw:hover {
+  background: rgba(191, 242, 5, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .totw-player-card,
+  .totw-desktop-motw,
+  .totw-mobile-motw,
+  .competition-glass-card {
+    animation: none;
+    transition: none;
+  }
+
+  .competition-glass-card:hover .competition-glass-card-inner,
+  .competition-glass-card:hover .competition-glass-card-logo {
+    transform: none;
+  }
+}

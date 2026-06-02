@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOrgSlug, getOrganization } from "@/lib/org";
-import { getNewsArticle, getPublishedNewsIds } from "@/lib/data/news";
+import { getNewsArticle } from "@/lib/data/news";
 import { OrgImage } from "@/components/ui/OrgImage";
 import { ArticleBody } from "@/components/news/ArticleBody";
 import { ArticleTags } from "@/components/news/ArticleTags";
@@ -12,13 +12,8 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-export async function generateStaticParams() {
-  const slug = process.env.NEXT_PUBLIC_ORG_SLUG ?? "orange";
-  const org = await getOrganization(slug);
-  if (!org) return [];
-  const ids = await getPublishedNewsIds(org.id);
-  return ids.map((id) => ({ id }));
-}
+export const dynamic = "force-dynamic";
+export const dynamicParams = true;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;

@@ -1,4 +1,6 @@
-import { enrichMatchupsWithTeams, getPhaseIdsForOrg } from "@/lib/data/shared";
+import { enrichMatchupsWithTeams, fetchEditionTeamsForEdition, getPhaseIdsForOrg } from "@/lib/data/shared";
+import { getLatestTotwForEdition } from "@/lib/data/totw";
+import { sortNewsByPublishedAt } from "@/lib/home/news";
 import { getSupabase } from "@/lib/supabase";
 import { filterHomeTeams } from "@/lib/home/teams";
 import type {
@@ -6,6 +8,7 @@ import type {
   HomeMatches,
   HomeMotw,
   HomeSponsor,
+  HomeTotw,
   Match,
   Matchup,
   Phase,
@@ -14,6 +17,7 @@ import type {
   StandingRow,
   Team,
   TeamEditionStats,
+  TeamStatLeader,
 } from "@/lib/types";
 import { isMatchUpcoming, MATCH_SELECT_BASE, statsToStandings } from "@/lib/utils";
 
@@ -126,7 +130,7 @@ export async function getFeaturedNews(orgId: string): Promise<HomeNewsArticle[]>
     return [];
   }
 
-  return (data ?? []).map((row) => ({
+  const articles = (data ?? []).map((row) => ({
     id: row.id,
     title: row.title,
     subtitle: row.subtitle,
@@ -136,6 +140,8 @@ export async function getFeaturedNews(orgId: string): Promise<HomeNewsArticle[]>
       (j: { competition_id: string }) => j.competition_id,
     ),
   }));
+
+  return sortNewsByPublishedAt(articles);
 }
 
 function competitionLabel(comp: Competition): string {
@@ -212,11 +218,12 @@ export async function getHomeEditionsBundle(
       if (!editionId) return;
 
       const currentPhase = await getCurrentPhaseMeta(editionId);
-      const [standings, teams, latestMotw, phaseMatches, phaseMatchups] =
+      const [standings, teams, latestMotw, latestTotw, phaseMatches, phaseMatchups] =
         await Promise.all([
           getEditionStandings(editionId),
           getEditionTeams(editionId),
           getLatestMotwForEdition(editionId),
+          getLatestTotwForEdition(editionId),
           getCurrentPhaseMatches(currentPhase?.id ?? null),
           getCurrentPhaseMatchups(currentPhase),
         ]);
@@ -235,6 +242,7 @@ export async function getHomeEditionsBundle(
         phaseMatchups,
         teams,
         latestMotw,
+        latestTotw,
       };
     }),
   );
@@ -289,6 +297,8 @@ export async function getEditionStandings(
       goals_scored,
       goals_conceded,
       points,
+      yellow_cards,
+      red_cards,
       teams(id, full_name, short_name, abbreviation, logo_url, primary_color)
     `,
     )
@@ -305,27 +315,10 @@ export async function getEditionStandings(
 }
 
 export async function getEditionTeams(editionId: string): Promise<Team[]> {
-  const supabase = getSupabase();
-
-  const { data, error } = await supabase
-    .from("edition_teams")
-    .select(
-      "teams(id, full_name, short_name, abbreviation, logo_url, primary_color)",
-    )
-    .eq("edition_id", editionId)
-    .eq("is_free_agent_pool", false);
-
-  if (error) {
-    console.error("[getEditionTeams]", error.message);
-    return [];
-  }
-
-  const teams: Team[] = [];
-  for (const row of data ?? []) {
-    const raw = row.teams as Team | Team[] | null;
-    const t = Array.isArray(raw) ? raw[0] : raw;
-    if (t) teams.push(t);
-  }
+  const rows = await fetchEditionTeamsForEdition(editionId);
+  const teams = rows
+    .map((row) => row.teams)
+    .filter((team): team is Team => team != null);
   return filterHomeTeams(teams);
 }
 
@@ -435,5 +428,130 @@ async function getLatestMotwForEdition(
     athlete_photo_url: motw.athlete.photo_url ?? null,
     team_name: motw.team?.abbreviation ?? motw.team?.full_name ?? null,
     team_logo_url: motw.team?.logo_url ?? null,
+  };
+}
+
+function unwrapTeam(
+  teams: Team | Team[] | null | undefined,
+): Team | null {
+  if (!teams) return null;
+  return Array.isArray(teams) ? (teams[0] ?? null) : teams;
+}
+
+type EditionAwardChampionRow = {
+  winning_team_id: string;
+  teams: Team | Team[] | null;
+};
+
+type TeamEditionWinsRow = {
+  team_id: string;
+  wins: number | null;
+  teams: Team | Team[] | null;
+};
+
+/**
+ * Card "Títulos" com competição selecionada:
+ * 1) edition_awards (champion) agrupado por equipe
+ * 2) fallback: maior vitórias em team_edition_stats
+ */
+export async function getTopTeamLeaderForCompetition(
+  selectedCompetitionId: string,
+  gender: string | null,
+): Promise<TeamStatLeader | null> {
+  const supabase = getSupabase();
+
+  let titlesQuery = supabase
+    .from("edition_awards")
+    .select(
+      `
+      winning_team_id,
+      teams!edition_awards_winning_team_id_fkey (
+        id, full_name, short_name, abbreviation, logo_url, primary_color, gender
+      ),
+      competition_editions!inner (
+        competition_id
+      )
+    `,
+    )
+    .eq("award_type", "champion")
+    .eq("competition_editions.competition_id", selectedCompetitionId)
+    .not("winning_team_id", "is", null);
+
+  if (gender) {
+    titlesQuery = titlesQuery.eq("teams.gender", gender);
+  }
+
+  const { data: titlesData, error: titlesError } = await titlesQuery;
+
+  if (titlesError) {
+    console.error("[getTopTeamLeaderForCompetition] titles", titlesError.message);
+  }
+
+  const titleRows = (titlesData ?? []) as EditionAwardChampionRow[];
+
+  if (titleRows.length > 0) {
+    const titleCounts = new Map<string, { team: Team; count: number }>();
+
+    for (const row of titleRows) {
+      if (!row.winning_team_id) continue;
+      const team = unwrapTeam(row.teams);
+      if (!team) continue;
+      const prev = titleCounts.get(row.winning_team_id);
+      titleCounts.set(row.winning_team_id, {
+        team,
+        count: (prev?.count ?? 0) + 1,
+      });
+    }
+
+    const best = [...titleCounts.values()].sort((a, b) => b.count - a.count)[0];
+    if (best?.count) {
+      return {
+        titles: best.count,
+        wins: null,
+        points: null,
+        teams: best.team,
+        mode: "titles",
+        label: "Títulos na competição",
+      };
+    }
+  }
+
+  let winsQuery = supabase
+    .from("team_edition_stats")
+    .select(
+      `
+      team_id, wins,
+      teams ( id, full_name, short_name, abbreviation, logo_url, primary_color, gender ),
+      competition_editions!inner ( competition_id )
+    `,
+    )
+    .eq("competition_editions.competition_id", selectedCompetitionId)
+    .order("wins", { ascending: false })
+    .limit(1);
+
+  if (gender) {
+    winsQuery = winsQuery.eq("teams.gender", gender);
+  }
+
+  const { data: winsData, error: winsError } = await winsQuery.maybeSingle();
+
+  if (winsError) {
+    console.error("[getTopTeamLeaderForCompetition] wins", winsError.message);
+    return null;
+  }
+
+  const winsRow = winsData as TeamEditionWinsRow | null;
+  const team = unwrapTeam(winsRow?.teams);
+  const wins = winsRow?.wins ?? 0;
+
+  if (!team || wins <= 0) return null;
+
+  return {
+    titles: null,
+    wins,
+    points: null,
+    teams: team,
+    mode: "wins",
+    label: "Mais vitórias na competição",
   };
 }

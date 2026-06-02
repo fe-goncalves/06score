@@ -1,8 +1,17 @@
+import { buildEditionDetailsPanelData } from "@/lib/competition/detailsPanel";
+import {
+  fetchEditionAwardsForHub,
+  fetchEditionDetailsExtras,
+} from "@/lib/data/competition-details";
+import { fetchEditionTotsSquad } from "@/lib/data/tots";
+import { fetchCompetitionTeamStats } from "@/lib/data/competition-team-stats";
 import {
   assertOrgOwnsCompetition,
   enrichMatchupsWithTeams,
+  fetchEditionTeamsForCompetition,
   getEditionIdsForCompetition,
   getPhaseIdsForEdition,
+  supplementEditionTeamsForHub,
 } from "@/lib/data/shared";
 import { getSupabase } from "@/lib/supabase";
 import type {
@@ -10,19 +19,48 @@ import type {
   Competition,
   CompetitionEdition,
   CompetitionHubData,
-  EditionTeam,
   Group,
   GroupTeam,
   Match,
   Matchup,
   Phase,
+  TableMarker,
   TeamEditionStats,
 } from "@/lib/types";
+import { sortPhases } from "@/lib/competition/phases";
+import {
+  buildCoachLeadersFromGallery,
+  getTotwGalleryForEdition,
+} from "@/lib/data/totw";
 import { MATCH_SELECT_BASE } from "@/lib/utils";
+
+const ATHLETE_LEADER_SELECT =
+  "athletes(id, full_name, surname, photo_url), teams(full_name, short_name, logo_url, abbreviation)";
+
+export async function getCompetitionName(
+  competitionId: string,
+  orgId: string,
+): Promise<string | null> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("competitions")
+    .select("full_name")
+    .eq("id", competitionId)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[getCompetitionName]", error.message);
+    return null;
+  }
+
+  return data?.full_name ?? null;
+}
 
 export async function getCompetitionHub(
   competitionId: string,
   orgId: string,
+  requestedEditionId?: string | null,
 ): Promise<CompetitionHubData | null> {
   const competition = await assertOrgOwnsCompetition(competitionId, orgId);
   if (!competition) return null;
@@ -41,8 +79,12 @@ export async function getCompetitionHub(
   }
 
   const editionList = (editions as CompetitionEdition[] | null) ?? [];
-  const currentEdition =
+  const defaultEdition =
     editionList.find((e) => e.is_current) ?? editionList[0] ?? null;
+  const currentEdition =
+    requestedEditionId && editionList.some((e) => e.id === requestedEditionId)
+      ? (editionList.find((e) => e.id === requestedEditionId) ?? defaultEdition)
+      : defaultEdition;
 
   if (!currentEdition) {
     return {
@@ -57,8 +99,26 @@ export async function getCompetitionHub(
       topScorers: [],
       topAssisters: [],
       topYellowCards: [],
+      topMotm: [],
+      topRedCards: [],
+      topTotwSelections: [],
+      totwGallery: [],
+      topCoaches: [],
       groups: [],
       groupTeams: [],
+      tableMarkers: [],
+      editionDetails: {
+        totalGoals: 0,
+        totalAthletes: 0,
+        totalYellowCards: 0,
+        totalRedCards: 0,
+        totalCards: 0,
+        debutTeams: [],
+        phaseLeaders: [],
+        pastChampions: [],
+        defendingChampion: null,
+      },
+      awards: [],
     };
   }
 
@@ -72,19 +132,24 @@ export async function getCompetitionHub(
     phasesResult,
     statsResult,
     matchesResult,
-    editionTeamsResult,
+    editionTeamsBase,
     topScorersResult,
     topAssistersResult,
     topYellowResult,
+    topMotmResult,
+    topRedResult,
+    topTotwCountResult,
     groupsResult,
+    markersResult,
+    awards,
+    totsSquad,
   ] = await Promise.all([
     supabase
       .from("phases")
       .select(
-        "id, edition_id, full_name, custom_label, phase_type, display_order, is_current",
+        "id, edition_id, full_name, custom_label, phase_type, display_order, is_current, created_at",
       )
-      .eq("edition_id", editionId)
-      .order("display_order", { ascending: true }),
+      .eq("edition_id", editionId),
     supabase
       .from("team_edition_stats")
       .select(
@@ -98,6 +163,8 @@ export async function getCompetitionHub(
         goals_scored,
         goals_conceded,
         points,
+        yellow_cards,
+        red_cards,
         teams(id, full_name, short_name, abbreviation, logo_url, primary_color)
       `,
       )
@@ -112,48 +179,57 @@ export async function getCompetitionHub(
           .order("match_date", { ascending: false })
           .order("match_time", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
-    supabase
-      .from("edition_teams")
-      .select(
-        `
-        id,
-        edition_id,
-        team_id,
-        is_free_agent_pool,
-        teams(id, full_name, short_name, abbreviation, logo_url, primary_color)
-      `,
-      )
-      .eq("edition_id", editionId)
-      .eq("is_free_agent_pool", false),
+    fetchEditionTeamsForCompetition(competitionId, editionId),
     supabase
       .from("athlete_edition_stats")
-      .select(
-        "goals, assists, athletes(id, full_name, surname, photo_url), teams(full_name, short_name, logo_url, abbreviation)",
-      )
+      .select(`goals, assists, ${ATHLETE_LEADER_SELECT}`)
       .eq("edition_id", editionId)
       .order("goals", { ascending: false })
       .limit(10),
     supabase
       .from("athlete_edition_stats")
-      .select(
-        "goals, assists, athletes(id, full_name, surname, photo_url), teams(full_name, short_name, logo_url, abbreviation)",
-      )
+      .select(`goals, assists, ${ATHLETE_LEADER_SELECT}`)
       .eq("edition_id", editionId)
       .order("assists", { ascending: false })
       .limit(10),
     supabase
       .from("athlete_edition_stats")
-      .select(
-        "yellow_cards, athletes(id, full_name, surname, photo_url), teams(full_name, short_name, logo_url, abbreviation)",
-      )
+      .select(`yellow_cards, ${ATHLETE_LEADER_SELECT}`)
       .eq("edition_id", editionId)
       .order("yellow_cards", { ascending: false })
+      .limit(10),
+    supabase
+      .from("athlete_edition_stats")
+      .select(`motm_count, ${ATHLETE_LEADER_SELECT}`)
+      .eq("edition_id", editionId)
+      .order("motm_count", { ascending: false })
+      .limit(10),
+    supabase
+      .from("athlete_edition_stats")
+      .select(`red_cards, ${ATHLETE_LEADER_SELECT}`)
+      .eq("edition_id", editionId)
+      .order("red_cards", { ascending: false })
+      .limit(10),
+    supabase
+      .from("athlete_edition_stats")
+      .select(`totw_count, ${ATHLETE_LEADER_SELECT}`)
+      .eq("edition_id", editionId)
+      .order("totw_count", { ascending: false })
       .limit(10),
     supabase
       .from("groups")
       .select("id, phase_id, name, custom_label, display_order")
       .in("phase_id", phaseIdsQuery)
       .order("display_order", { ascending: true }),
+    supabase
+      .from("table_markers")
+      .select(
+        "id, phase_id, description, color_hex, show_background, position_from, position_to, display_order",
+      )
+      .in("phase_id", phaseIdsQuery)
+      .order("display_order", { ascending: true }),
+    fetchEditionAwardsForHub(editionId),
+    fetchEditionTotsSquad(editionId),
   ]);
 
   const groups = (groupsResult.data as Group[] | null) ?? [];
@@ -183,7 +259,18 @@ export async function getCompetitionHub(
     }
   }
 
-  const phases = (phasesResult.data as Phase[] | null) ?? [];
+  const phases = sortPhases((phasesResult.data as Phase[] | null) ?? []);
+  const matches = (matchesResult.data as Match[] | null) ?? [];
+  const teamEditionStats =
+    (statsResult.data as TeamEditionStats[] | null) ?? [];
+
+  const [totwGallery, competitionStats, detailsExtras] = await Promise.all([
+    getTotwGalleryForEdition(editionId, phases),
+    fetchCompetitionTeamStats(competitionId),
+    fetchEditionDetailsExtras(competitionId, editionId),
+  ]);
+
+  const topCoaches = buildCoachLeadersFromGallery(totwGallery);
   const knockoutPhaseIds = phases
     .filter((p) => p.phase_type === "knockout" || p.phase_type === "conference")
     .map((p) => p.id);
@@ -207,15 +294,28 @@ export async function getCompetitionHub(
     }
   }
 
-  const editionTeamsRaw = (editionTeamsResult.data as EditionTeam[] | null) ?? [];
-  const editionTeamIds = editionTeamsRaw.map((et) => et.id);
+  let editionTeams = editionTeamsBase;
+
+  if (!editionTeams.length) {
+    editionTeams = await supplementEditionTeamsForHub({
+      editionId,
+      base: [],
+      stats: (statsResult.data as TeamEditionStats[] | null) ?? [],
+      matches: (matchesResult.data as Match[] | null) ?? [],
+      matchups,
+    });
+  }
+
+  const rosterEditionTeamIds = editionTeams
+    .filter((et) => !et.id.startsWith("hub-"))
+    .map((et) => et.id);
 
   let rosterCounts: Record<string, number> = {};
-  if (editionTeamIds.length) {
+  if (rosterEditionTeamIds.length) {
     const { data: rosterData } = await supabase
       .from("edition_roster_entries")
       .select("edition_team_id")
-      .in("edition_team_id", editionTeamIds)
+      .in("edition_team_id", rosterEditionTeamIds)
       .eq("member_type", "athlete")
       .eq("status", "approved");
 
@@ -225,10 +325,24 @@ export async function getCompetitionHub(
     }
   }
 
-  const editionTeams = editionTeamsRaw.map((et) => ({
+  editionTeams = editionTeams.map((et) => ({
     ...et,
     athlete_count: rosterCounts[et.id] ?? 0,
   }));
+
+  editionTeams = editionTeams.map((et) => {
+    const lookupId = et.team_id || et.teams?.id;
+    const stats =
+      lookupId && competitionStats[lookupId]
+        ? competitionStats[lookupId]
+        : { participations: 0, titles: 0, wins: 0 };
+    return {
+      ...et,
+      competition_participations: stats.participations,
+      competition_titles: stats.titles,
+      competition_wins: stats.wins,
+    };
+  });
 
   if (statsResult.error) {
     console.error("[getCompetitionHub stats]", statsResult.error.message);
@@ -236,23 +350,48 @@ export async function getCompetitionHub(
   if (matchesResult.error) {
     console.error("[getCompetitionHub matches]", matchesResult.error.message);
   }
+  if (markersResult.error) {
+    console.error("[getCompetitionHub tableMarkers]", markersResult.error.message);
+  }
+  const tableMarkers = (markersResult.data as TableMarker[] | null) ?? [];
+
+  const editionDetails = buildEditionDetailsPanelData({
+    editionTeams,
+    phases,
+    matches,
+    teamEditionStats,
+    totalGoalsFromAthletes: detailsExtras.totalGoals,
+    totalYellowCards: detailsExtras.totalYellowCards,
+    totalRedCards: detailsExtras.totalRedCards,
+    pastChampions: detailsExtras.pastChampions,
+    defendingChampion: detailsExtras.defendingChampion,
+  });
 
   return {
     competition,
     editions: editionList,
     currentEdition,
     phases,
-    teamEditionStats:
-      (statsResult.data as TeamEditionStats[] | null) ?? [],
-    matches: (matchesResult.data as Match[] | null) ?? [],
+    teamEditionStats,
+    matches,
     matchups,
     editionTeams,
+    editionDetails,
+    awards,
+    totsSquad,
     topScorers: (topScorersResult.data as AthleteStatLeader[] | null) ?? [],
     topAssisters: (topAssistersResult.data as AthleteStatLeader[] | null) ?? [],
     topYellowCards:
       (topYellowResult.data as AthleteStatLeader[] | null) ?? [],
+    topMotm: (topMotmResult.data as AthleteStatLeader[] | null) ?? [],
+    topRedCards: (topRedResult.data as AthleteStatLeader[] | null) ?? [],
+    topTotwSelections:
+      (topTotwCountResult.data as AthleteStatLeader[] | null) ?? [],
+    totwGallery,
+    topCoaches,
     groups,
     groupTeams,
+    tableMarkers,
   };
 }
 

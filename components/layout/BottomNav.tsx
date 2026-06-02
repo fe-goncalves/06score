@@ -5,21 +5,8 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   {
-    href: "/",
-    label: "Home",
-    match: (p: string) => p === "/",
-    icon: (
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M3 10.5L12 4l9 6.5V20a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1v-9.5z"
-      />
-    ),
-  },
-  {
     href: "/competicoes",
-    label: "Jogos",
+    label: "Competições",
     match: (p: string) => p.startsWith("/competicoes") || p.startsWith("/jogos"),
     icon: (
       <path
@@ -31,9 +18,9 @@ const TABS = [
     ),
   },
   {
-    href: "/ranking",
-    label: "Liga",
-    match: (p: string) => p.startsWith("/ranking"),
+    href: "/times",
+    label: "Equipes",
+    match: (p: string) => p.startsWith("/times"),
     icon: (
       <path
         strokeLinecap="round"
@@ -57,9 +44,9 @@ const TABS = [
     ),
   },
   {
-    href: "/hall-da-fama",
-    label: "Hall",
-    match: (p: string) => p.startsWith("/hall-da-fama"),
+    href: "/news",
+    label: "Pesquisa",
+    match: (p: string) => p.startsWith("/news"),
     icon: (
       <path
         strokeLinecap="round"
@@ -79,7 +66,7 @@ export function BottomNav() {
       className="bottom-nav fixed bottom-0 left-0 right-0 z-50 md:hidden"
       aria-label="Navegação principal"
     >
-      <ul className="mx-auto flex h-16 max-w-lg items-stretch justify-around">
+      <ul className="mx-auto grid h-16 w-full max-w-lg grid-cols-4 items-stretch">
         {TABS.map((tab) => {
           const active = tab.match(pathname);
           return (

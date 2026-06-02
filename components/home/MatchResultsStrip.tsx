@@ -32,7 +32,11 @@ export function MatchResultsStrip({ recent, upcoming }: MatchResultsStripProps) 
   }
 
   return (
-    <div className="match-results-strip scrollbar-hide" role="region" aria-label="Resultados recentes">
+    <div
+      className="match-results-strip"
+      role="region"
+      aria-label="Resultados recentes"
+    >
       <div className="match-results-strip-track">
         {all.map((match, i) => (
           <MatchStripCell key={match.id} match={match} index={i} />

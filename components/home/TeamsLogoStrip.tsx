@@ -12,7 +12,7 @@ export function TeamsLogoStrip({ teams }: TeamsLogoStripProps) {
 
   return (
     <SectionEnter className="py-6">
-      <div className="page-edge-x flex gap-5 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="page-edge-x flex gap-5 overflow-x-auto pb-2">
         {teams.map((team, i) => {
           const href = team.id ? `/times/${team.id}` : "#";
           return (

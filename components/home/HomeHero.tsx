@@ -6,9 +6,14 @@ import type { CSSProperties } from "react";
 import { HomeStandingsCard } from "@/components/home/HomeStandingsCard";
 import { OrgImage } from "@/components/ui/OrgImage";
 import { SectionEnter } from "@/components/ui/SectionEnter";
-import { TeamLogo } from "@/components/ui/TeamLogo";
+import { HeroNextMatchRow } from "@/components/home/HeroNextMatchRow";
 import type { HomeMotw, HomeNewsArticle, Match, StandingRow } from "@/lib/types";
-import { formatMatchDateTime, isMatchUpcoming } from "@/lib/utils";
+import {
+  getHeroFallbackNews,
+  getHeroNews,
+} from "@/lib/home/news";
+import { getHeroUpcomingMatches } from "@/lib/home/hero-matches";
+import { formatMotwRoundLabel } from "@/lib/utils";
 
 interface HomeHeroProps {
   articles: HomeNewsArticle[];
@@ -33,21 +38,11 @@ export function HomeHero({
   const [paused, setPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
 
-  const topNews = articles.slice(0, 3);
+  const topNews = getHeroNews(articles);
   const count = topNews.length;
   const safeIndex = count ? index % count : 0;
-  const nextMatches = upcoming
-    .filter((m) => isMatchUpcoming(m))
-    .sort((a, b) => {
-      const cmp = a.match_date.localeCompare(b.match_date);
-      if (cmp !== 0) return cmp;
-      return (a.match_time ?? "").localeCompare(b.match_time ?? "");
-    })
-    .slice(0, 3);
-  const sideNews =
-    articles.find((a) => !topNews.some((t) => t.id === a.id)) ??
-    articles[0] ??
-    null;
+  const nextMatches = getHeroUpcomingMatches(upcoming, 7, 3);
+  const fallbackNews = getHeroFallbackNews(articles);
   const showUpcomingMatches = nextMatches.length > 0;
 
   const goTo = useCallback(
@@ -58,17 +53,21 @@ export function HomeHero({
     [count],
   );
 
+  const topNewsKey = topNews.map((a) => a.id).join(",");
+
   useEffect(() => {
     setIndex(0);
-  }, [topNews]);
+  }, [topNewsKey]);
 
   useEffect(() => {
     if (paused || count <= 1) return;
     const timer = setInterval(() => {
       setIndex((i) => (i + 1) % count);
-    }, 5000);
+    }, 6000);
     return () => clearInterval(timer);
-  }, [paused, count, topNews]);
+  }, [paused, count, topNewsKey]);
+
+  const activeArticle = topNews[safeIndex];
 
   return (
     <SectionEnter className="py-6">
@@ -92,76 +91,111 @@ export function HomeHero({
               touchStartX.current = null;
             }}
           >
-            {count === 0 ? (
+            {count === 0 || !activeArticle ? (
               <div className="card-surface flex h-full items-center justify-center">
                 <p className="font-mono-label text-xs text-white/40">
                   Nenhuma notícia publicada.
                 </p>
               </div>
             ) : (
-              topNews.map((article, i) => (
+              <>
                 <Link
-                  key={article.id}
-                  href={`/news/${article.id}`}
-                  className={`hero-slide frosted-glass-hover group block ${i === safeIndex ? "active" : ""}`}
-                  aria-hidden={i !== safeIndex}
-                  tabIndex={i === safeIndex ? 0 : -1}
+                  href={`/news/${activeArticle.id}`}
+                  className="frosted-glass-hover group block h-full"
                 >
                   <article className="relative h-full w-full overflow-hidden rounded-lg">
                     <div className="news-card-media absolute inset-0 bg-white/5">
-                      {article.cover_url && (
+                      {activeArticle.cover_url && (
                         <OrgImage
-                          src={article.cover_url}
-                          alt={article.title}
+                          src={activeArticle.cover_url}
+                          alt={activeArticle.title}
                           fill
-                          className="object-cover"
+                          className="object-cover transition-opacity duration-300"
                         />
                       )}
                     </div>
-                    <div className="frosted-glass absolute inset-x-0 bottom-0 p-4 md:p-5">
+                    <div className="hero-slide-caption frosted-glass absolute inset-x-0 bottom-0 p-4 md:p-5">
                       <span className="font-mono-label text-[8px] font-bold uppercase text-[var(--color-brand)]">
                         Notícias
                       </span>
                       <h2 className="font-display mt-1 line-clamp-2 text-lg font-black uppercase leading-tight text-white md:text-[22px]">
-                        {article.title}
+                        {activeArticle.title}
                       </h2>
                     </div>
                   </article>
                 </Link>
-              ))
-            )}
 
-            {count > 1 && (
-              <div className="hero-timeline absolute inset-x-4 bottom-4 z-10 flex gap-2">
-                {topNews.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIndex(i);
-                    }}
-                    className={`hero-timeline-dot h-1.5 flex-1 rounded-full ${i === safeIndex ? "hero-timeline-dot-active" : ""}`}
-                    aria-label={`Slide ${i + 1}`}
-                  />
-                ))}
-              </div>
+                {count > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      className="hero-carousel-arrow hero-carousel-arrow-prev"
+                      onClick={() => goTo(safeIndex - 1)}
+                      aria-label="Notícia anterior"
+                    >
+                      ‹
+                    </button>
+                    <button
+                      type="button"
+                      className="hero-carousel-arrow hero-carousel-arrow-next"
+                      onClick={() => goTo(safeIndex + 1)}
+                      aria-label="Próxima notícia"
+                    >
+                      ›
+                    </button>
+
+                    <div className="hero-carousel-controls">
+                      <span className="font-mono-label text-[9px] font-bold uppercase text-white/50">
+                        {safeIndex + 1} / {count}
+                      </span>
+                      <div
+                        className="hero-carousel-dots"
+                        role="tablist"
+                        aria-label="Escolher notícia"
+                      >
+                        {topNews.map((article, i) => (
+                          <button
+                            key={article.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={i === safeIndex}
+                            aria-label={`Notícia ${i + 1}: ${article.title}`}
+                            onClick={() => setIndex(i)}
+                            className={`hero-carousel-dot ${i === safeIndex ? "hero-carousel-dot-active" : ""}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>
             )}
           </div>
 
           <div className="hero-side-grid">
             {latestMotw ? (
               <article
-                className="motw-card group relative overflow-hidden rounded-lg border border-white/[0.08] p-4 md:p-5"
+                className="motw-card group relative overflow-hidden rounded-lg p-4 md:p-5"
                 style={
                   {
                     "--motw-color": competitionColor ?? "var(--color-brand)",
                   } as CSSProperties
                 }
               >
-                <div className="motw-card-bg absolute inset-0" aria-hidden="true" />
-                <div className="motw-card-accent absolute inset-0" aria-hidden="true" />
+                <div className="motw-card-ring" aria-hidden="true" />
+                <div className="motw-card-bg absolute inset-0 rounded-lg" aria-hidden="true" />
+                <div className="motw-card-accent absolute inset-0 rounded-lg" aria-hidden="true" />
+                {latestMotw.team_logo_url ? (
+                  <div className="motw-card-team-logo">
+                    <OrgImage
+                      src={latestMotw.team_logo_url}
+                      alt={latestMotw.team_name ?? "Equipe"}
+                      width={40}
+                      height={40}
+                      className="h-10 w-10 object-contain"
+                    />
+                  </div>
+                ) : null}
                 {latestMotw.athlete_photo_url && (
                   <div className="motw-athlete-figure absolute bottom-0 right-0 h-[84%] w-[58%]">
                     <OrgImage
@@ -174,18 +208,13 @@ export function HomeHero({
                 )}
                 <div className="relative z-10 max-w-[68%]">
                   <p className="font-mono-label text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--motw-color)]">
-                    Ultimo MOTW
+                    {formatMotwRoundLabel(latestMotw.round_label)}
                   </p>
-                  <h3 className="font-display mt-3 truncate text-2xl font-black uppercase leading-none text-white">
+                  <h3 className="motw-card-surname font-display mt-3 truncate text-2xl font-black uppercase leading-none text-white">
                     {latestMotw.athlete_surname ?? latestMotw.athlete_name}
                   </h3>
                   <p className="font-mono-label mt-1 text-[10px] uppercase text-white/70">
                     {latestMotw.team_name ?? "Equipe não informada"}
-                  </p>
-                  <p className="font-mono-label mt-4 text-[10px] uppercase tracking-[0.08em] text-white/55">
-                    {latestMotw.round_label
-                      ? `Destaque da ${latestMotw.round_label}`
-                      : "Destaque da rodada mais recente"}
                   </p>
                 </div>
               </article>
@@ -195,6 +224,7 @@ export function HomeHero({
                   competitionId={competitionId}
                   competitionName={competitionName}
                   rows={standings}
+                  accentColor={competitionColor}
                 />
               </div>
             ) : (
@@ -210,38 +240,22 @@ export function HomeHero({
                 <p className="font-mono-label text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--color-brand)]">
                   Proximos jogos
                 </p>
-                <div className="mt-3 space-y-2.5">
+                <div className="mt-3 space-y-2">
                   {nextMatches.map((match, idx) => (
-                    <Link
-                      key={match.id}
-                      href={`/jogos/${match.id}`}
-                      className="hero-next-match-row group flex items-center gap-2 rounded-md border border-white/8 bg-white/[0.02] px-2.5 py-2"
-                    >
-                      <TeamLogo team={match.teams_a} index={idx * 2} size={22} />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-mono-label truncate text-[9px] uppercase text-white/70">
-                          {(match.teams_a?.short_name ?? match.teams_a?.full_name ?? "Time A")} x{" "}
-                          {match.teams_b?.short_name ?? match.teams_b?.full_name ?? "Time B"}
-                        </p>
-                        <p className="font-mono-label text-[8px] uppercase text-white/50">
-                          {formatMatchDateTime(match.match_date, match.match_time)}
-                        </p>
-                      </div>
-                      <TeamLogo team={match.teams_b} index={idx * 2 + 1} size={22} />
-                    </Link>
+                    <HeroNextMatchRow key={match.id} match={match} index={idx} />
                   ))}
                 </div>
               </article>
-            ) : sideNews ? (
+            ) : fallbackNews ? (
               <Link
-                href={`/news/${sideNews.id}`}
+                href={`/news/${fallbackNews.id}`}
                 className="card-surface group block overflow-hidden rounded-lg border border-white/10"
               >
                 <div className="relative aspect-[16/9] bg-white/5">
-                  {sideNews.cover_url ? (
+                  {fallbackNews.cover_url ? (
                     <OrgImage
-                      src={sideNews.cover_url}
-                      alt={sideNews.title}
+                      src={fallbackNews.cover_url}
+                      alt={fallbackNews.title}
                       fill
                       className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                     />
@@ -252,7 +266,7 @@ export function HomeHero({
                       Notícias
                     </span>
                     <h4 className="font-display mt-1 line-clamp-2 text-sm font-black uppercase leading-tight text-white md:text-base">
-                      {sideNews.title}
+                      {fallbackNews.title}
                     </h4>
                   </div>
                 </div>

@@ -33,7 +33,7 @@ export function CompetitionSelector({
 
   return (
     <div className="competition-selector">
-      <div className="competition-selector-track page-edge-x scrollbar-hide flex h-full items-center gap-2 overflow-x-auto">
+      <div className="competition-selector-track page-edge-x flex h-full items-center gap-2 overflow-x-auto">
         <button
           type="button"
           onClick={() => onSelect(null)}

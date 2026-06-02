@@ -1,3 +1,4 @@
+import { sortNewsByPublishedAt } from "@/lib/home/news";
 import { filterHomeTeams } from "@/lib/home/teams";
 import type {
   Competition,
@@ -6,6 +7,7 @@ import type {
   HomeHighlightsBundle,
   HomeMatches,
   HomeMotw,
+  HomeTotw,
   HomeNewsArticle,
   Match,
   StandingRow,
@@ -35,8 +37,9 @@ export function filterNews(
   articles: HomeNewsArticle[],
   competitionId: CompetitionFilterId,
 ): HomeNewsArticle[] {
-  if (!competitionId) return articles;
-  return articles.filter((a) => a.competition_ids.includes(competitionId));
+  const sorted = sortNewsByPublishedAt(articles);
+  if (!competitionId) return sorted;
+  return sorted.filter((a) => a.competition_ids.includes(competitionId));
 }
 
 export function resolveEditionData(
@@ -96,6 +99,17 @@ export function getLatestMotwForFilter(
   return (
     resolveEditionData(editionsByCompetition, competitions, competitionId)
       ?.latestMotw ?? null
+  );
+}
+
+export function getLatestTotwForFilter(
+  editionsByCompetition: Record<string, HomeEditionData>,
+  competitions: Competition[],
+  competitionId: CompetitionFilterId,
+): HomeTotw | null {
+  return (
+    resolveEditionData(editionsByCompetition, competitions, competitionId)
+      ?.latestTotw ?? null
   );
 }
 

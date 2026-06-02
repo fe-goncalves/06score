@@ -1,7 +1,6 @@
 import { HighlightStatCard } from "@/components/home/HighlightStatCard";
 import { SectionEnter } from "@/components/ui/SectionEnter";
 import type { AthleteStatLeader, TeamStatLeader } from "@/lib/types";
-import { athleteDisplayName } from "@/lib/utils";
 
 interface LeadersSectionProps {
   topScorer: AthleteStatLeader | null;
@@ -16,6 +15,13 @@ function teamDisplayName(team: TeamStatLeader["teams"]): string {
   return team.short_name ?? team.full_name;
 }
 
+function athleteSurnameOrName(
+  athlete: AthleteStatLeader["athletes"] | null | undefined,
+): string {
+  if (!athlete) return "";
+  return athlete.surname?.trim() || athlete.full_name;
+}
+
 export function LeadersSection({
   topScorer,
   topAssister,
@@ -23,18 +29,17 @@ export function LeadersSection({
   competitionColor,
   isOrganizationScope = false,
 }: LeadersSectionProps) {
-  const hasAny = topScorer?.athletes || topAssister?.athletes || topTeamByTitles?.teams;
-
-  if (!hasAny) return null;
-
   const scorerAthlete = topScorer?.athletes;
   const assisterAthlete = topAssister?.athletes;
   const titleTeam = topTeamByTitles?.teams;
+  const titleMode = topTeamByTitles?.mode;
   const titleStat =
-    topTeamByTitles?.titles ??
-    topTeamByTitles?.wins ??
-    topTeamByTitles?.points ??
-    0;
+    titleMode === "wins"
+      ? (topTeamByTitles?.wins ?? 0)
+      : (topTeamByTitles?.titles ?? 0);
+  const titleSubtitle =
+    topTeamByTitles?.label ??
+    (isOrganizationScope ? "Títulos na organização" : "Títulos na competição");
 
   return (
     <SectionEnter className="py-6 md:py-8">
@@ -42,17 +47,11 @@ export function LeadersSection({
         <HighlightStatCard
           label="Artilheiro"
           stat={topScorer?.goals ?? 0}
-          name={
-            scorerAthlete
-              ? athleteDisplayName(
-                  scorerAthlete.full_name,
-                  scorerAthlete.surname,
-                )
-              : ""
-          }
-          subtitle={
-            topScorer?.teams?.short_name ?? topScorer?.teams?.full_name ?? null
-          }
+          name={athleteSurnameOrName(scorerAthlete)}
+          emptyMessage="Sem artilheiro nesta competição."
+          subtitle={topScorer?.teams?.short_name ?? topScorer?.teams?.full_name ?? null}
+          teamName={topScorer?.teams?.short_name ?? topScorer?.teams?.full_name ?? null}
+          teamLogoUrl={topScorer?.teams?.logo_url}
           imageUrl={scorerAthlete?.photo_url}
           href={scorerAthlete?.id ? `/atletas/${scorerAthlete.id}` : undefined}
           accentColor={competitionColor}
@@ -61,19 +60,19 @@ export function LeadersSection({
         <HighlightStatCard
           label="Assistências"
           stat={topAssister?.assists ?? 0}
-          name={
-            assisterAthlete
-              ? athleteDisplayName(
-                  assisterAthlete.full_name,
-                  assisterAthlete.surname,
-                )
-              : ""
-          }
+          name={athleteSurnameOrName(assisterAthlete)}
+          emptyMessage="Sem assistências nesta competição."
           subtitle={
             topAssister?.teams?.short_name ??
             topAssister?.teams?.full_name ??
             null
           }
+          teamName={
+            topAssister?.teams?.short_name ??
+            topAssister?.teams?.full_name ??
+            null
+          }
+          teamLogoUrl={topAssister?.teams?.logo_url}
           imageUrl={assisterAthlete?.photo_url}
           href={
             assisterAthlete?.id ? `/atletas/${assisterAthlete.id}` : undefined
@@ -85,15 +84,9 @@ export function LeadersSection({
           label="Títulos"
           stat={titleStat}
           name={teamDisplayName(titleTeam)}
-          subtitle={
-            topTeamByTitles?.titles != null &&
-            topTeamByTitles.wins == null &&
-            topTeamByTitles.titles > 0
-              ? isOrganizationScope
-                ? "Campeã da organização"
-                : "Campeã da competição"
-              : "Histórico de vitórias"
-          }
+          emptyMessage="Sem títulos nesta competição."
+          subtitle={titleSubtitle}
+          subtitleTone={titleMode === "wins" ? "muted" : "default"}
           imageUrl={titleTeam?.logo_url}
           href={titleTeam?.id ? `/times/${titleTeam.id}` : undefined}
           accentColor={competitionColor ?? titleTeam?.primary_color}

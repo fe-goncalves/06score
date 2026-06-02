@@ -19,7 +19,7 @@ export function TeamsLogoCarousel({ teams, org }: TeamsLogoCarouselProps) {
 
   useEffect(() => {
     const track = trackRef.current;
-    if (!track || teams.length < 3) return;
+    if (!track || teams.length < 3 || window.innerWidth < 768) return;
 
     let pos = 0;
     let frame = 0;
@@ -40,10 +40,10 @@ export function TeamsLogoCarousel({ teams, org }: TeamsLogoCarouselProps) {
 
   return (
     <SectionEnter className="teams-logo-carousel-section py-10 md:py-14">
-      <div className="teams-logo-carousel relative overflow-hidden">
+      <div className="teams-logo-carousel relative overflow-x-auto md:overflow-hidden">
         <div
           ref={trackRef}
-          className="teams-logo-carousel-track scrollbar-hide flex items-center gap-10 md:gap-14"
+          className="teams-logo-carousel-track flex items-center gap-10 md:gap-14"
         >
           {loopTeams.map((team, i) => {
             const href = team.id ? `/times/${team.id}` : "#";
@@ -59,7 +59,7 @@ export function TeamsLogoCarousel({ teams, org }: TeamsLogoCarouselProps) {
           })}
         </div>
 
-        <div className="teams-logo-carousel-center pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="teams-logo-carousel-center pointer-events-none absolute inset-0 hidden items-center justify-center md:flex">
           <div className="teams-carousel-org-center card-surface flex h-[88px] w-[88px] items-center justify-center rounded-full md:h-[104px] md:w-[104px]">
             <OrgImage
               src={org.logo_url}

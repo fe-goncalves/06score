@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getOrgSlug, getOrganization } from "@/lib/org";
-import { getPublishedNews } from "@/lib/data/news";
-import { getSupabase } from "@/lib/supabase";
-import { SectionTitle } from "@/components/ui/SectionTitle";
+import { SiteListHero } from "@/components/layout/SiteListHero";
 import { NewsListClient } from "@/components/news/NewsListClient";
+import { getPublishedNews } from "@/lib/data/news";
+import { getCompetitionsList } from "@/lib/data/competition";
+import { getOrgSlug, getOrganization } from "@/lib/org";
 import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -15,16 +14,6 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-async function getCompetitions(orgId: string) {
-  const supabase = getSupabase();
-  const { data } = await supabase
-    .from("competitions")
-    .select("id, full_name, short_name")
-    .eq("organization_id", orgId)
-    .order("full_name");
-  return data ?? [];
-}
-
 export default async function NoticiasPage() {
   const slug = await getOrgSlug();
   const org = await getOrganization(slug);
@@ -32,19 +21,26 @@ export default async function NoticiasPage() {
 
   const [articles, competitions] = await Promise.all([
     getPublishedNews(org.id),
-    getCompetitions(org.id),
+    getCompetitionsList(org.id),
   ]);
 
+  const competitionFilters = competitions.map((c) => ({
+    id: c.id,
+    full_name: c.full_name,
+    short_name: c.short_name,
+  }));
+
   return (
-    <main className="page-container py-8 md:py-12">
-      <Link
-        href="/"
-        className="mb-8 inline-block text-xs font-bold uppercase tracking-wider text-white/40 transition-colors hover:text-[var(--color-brand)]"
-      >
-        ← Voltar
-      </Link>
-      <SectionTitle>Notícias</SectionTitle>
-      <NewsListClient articles={articles} competitions={competitions} />
-    </main>
+    <div className="site-list-page">
+      <SiteListHero
+        eyebrow="Cobertura"
+        title="Notícias"
+        description={`Últimas novidades, resultados e bastidores da ${org.name}.`}
+      />
+      <NewsListClient
+        articles={articles}
+        competitions={competitionFilters}
+      />
+    </div>
   );
 }

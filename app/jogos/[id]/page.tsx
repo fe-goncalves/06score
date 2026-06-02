@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MatchPageClient } from "@/components/match/MatchPageClient";
-import { getMatchDetail } from "@/lib/data/match";
+import { getCachedCompetitionHub } from "@/lib/data/cached";
+import { getMatchPageData } from "@/lib/data/match";
 import { getOrgSlug, getOrganization } from "@/lib/org";
 
 interface PageProps {
@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: PageProps) {
   const org = await getOrganization(slug);
   if (!org) return { title: "Partida" };
 
-  const data = await getMatchDetail(id, org.id);
+  const data = await getMatchPageData(id, org.id);
   if (!data) return { title: "Partida" };
 
   const a = data.match.teams_a?.short_name ?? data.match.teams_a?.full_name;
@@ -28,18 +28,20 @@ export default async function MatchPage({ params }: PageProps) {
   const org = await getOrganization(slug);
   if (!org) return null;
 
-  const data = await getMatchDetail(id, org.id);
+  const data = await getMatchPageData(id, org.id);
   if (!data) notFound();
 
+  const competitionId =
+    data.match.phases?.competition_editions?.competitions?.id;
+  const editionId = data.match.phases?.edition_id;
+
+  const competitionHub = competitionId
+    ? await getCachedCompetitionHub(competitionId, org.id, editionId ?? null)
+    : null;
+
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-      <Link
-        href="/"
-        className="mb-8 inline-block text-[11px] font-bold uppercase tracking-widest text-white/50 transition-colors hover:text-[var(--color-brand)]"
-      >
-        ← Voltar
-      </Link>
-      <MatchPageClient data={data} />
+    <div className="page-container match-page-wrap pb-14 pt-0">
+      <MatchPageClient data={data} competitionHub={competitionHub} />
     </div>
   );
 }

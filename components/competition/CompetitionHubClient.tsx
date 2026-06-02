@@ -1,71 +1,109 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { CompetitionHubHeader } from "@/components/competition/CompetitionHubHeader";
+import { CompetitionDetailsPanel } from "@/components/competition/CompetitionDetailsPanel";
+import { CompetitionTabPanel } from "@/components/competition/CompetitionTabPanel";
 import { EditionStatsLeaders } from "@/components/competition/EditionStatsLeaders";
-import { MatchesByRound } from "@/components/competition/MatchesByRound";
-import { PhaseStandingsPanel } from "@/components/competition/PhaseStandingsPanel";
-import { StandingsTable } from "@/components/competition/StandingsTable";
 import { TeamsGrid } from "@/components/competition/TeamsGrid";
-import { PageTabs, useActiveTab } from "@/components/ui/PageTabs";
+import {
+  getDefaultHubTab,
+  getHubTabs,
+  resolveHubTab,
+} from "@/lib/competition/hubTabs";
+import { useClientTab } from "@/lib/navigation/useClientTab";
 import type { CompetitionHubData } from "@/lib/types";
-import { statsToStandings } from "@/lib/utils";
 
-const TABS = [
-  { id: "classificacao", label: "CLASSIFICAÇÃO" },
-  { id: "jogos", label: "JOGOS" },
-  { id: "fases", label: "FASES" },
-  { id: "equipes", label: "EQUIPES" },
-  { id: "estatisticas", label: "ESTATÍSTICAS" },
-];
-
-function HubContent({ hub }: { hub: CompetitionHubData }) {
-  const tab = useActiveTab("classificacao");
-  const standings = statsToStandings(hub.teamEditionStats);
+function HubContent({
+  hub,
+  accentColor,
+  tab,
+}: {
+  hub: CompetitionHubData;
+  accentColor: string | null;
+  tab: string;
+}) {
+  const active = resolveHubTab(tab);
+  const editionKey = hub.currentEdition?.id ?? "edition";
 
   return (
-    <>
-      <PageTabs tabs={TABS} defaultTab="classificacao" />
-      <div className="mt-8">
-        {tab === "classificacao" && <StandingsTable rows={standings} />}
-        {tab === "jogos" && (
-          <MatchesByRound
-            matches={hub.matches}
-            phases={hub.phases}
-            matchups={hub.matchups}
-          />
-        )}
-        {tab === "fases" && (
-          <PhaseStandingsPanel
-            phases={hub.phases}
-            matches={hub.matches}
-            matchups={hub.matchups}
-            teamEditionStats={hub.teamEditionStats}
-            groups={hub.groups}
-            groupTeams={hub.groupTeams}
-          />
-        )}
-        {tab === "equipes" && <TeamsGrid editionTeams={hub.editionTeams} />}
-        {tab === "estatisticas" && (
-          <EditionStatsLeaders
-            topScorers={hub.topScorers}
-            topAssisters={hub.topAssisters}
-            topYellowCards={hub.topYellowCards}
-          />
-        )}
+    <div className="competition-hub-panel">
+      <div className={active === "competicao" ? undefined : "hidden"}>
+        <CompetitionTabPanel
+          key={editionKey}
+          phases={hub.phases}
+          matches={hub.matches}
+          matchups={hub.matchups}
+          teamEditionStats={hub.teamEditionStats}
+          groups={hub.groups}
+          groupTeams={hub.groupTeams}
+          tableMarkers={hub.tableMarkers}
+          accentColor={accentColor}
+        />
       </div>
-    </>
+
+      <div className={active === "estatisticas" ? undefined : "hidden"}>
+        <EditionStatsLeaders
+          topScorers={hub.topScorers}
+          topAssisters={hub.topAssisters}
+          topYellowCards={hub.topYellowCards}
+          topMotm={hub.topMotm}
+          topRedCards={hub.topRedCards}
+          topTotwSelections={hub.topTotwSelections}
+          teamEditionStats={hub.teamEditionStats}
+          totwGallery={hub.totwGallery}
+          accentColor={accentColor}
+        />
+      </div>
+
+      <div className={active === "equipes" ? undefined : "hidden"}>
+        <TeamsGrid editionTeams={hub.editionTeams} />
+      </div>
+
+      <div className={active === "detalhes" ? undefined : "hidden"}>
+        <CompetitionDetailsPanel
+          competition={hub.competition}
+          currentEdition={hub.currentEdition}
+          teamCount={hub.editionTeams.length}
+          matchCount={hub.matches.length}
+          details={hub.editionDetails}
+          awards={hub.awards}
+          totsSquad={hub.totsSquad}
+          accentColor={accentColor}
+        />
+      </div>
+    </div>
   );
 }
 
 export function CompetitionHubClient({ hub }: { hub: CompetitionHubData }) {
+  const accentColor = hub.competition.primary_color ?? null;
+  const tabs = useMemo(
+    () => getHubTabs(hub.currentEdition),
+    [hub.currentEdition],
+  );
+  const defaultTab = useMemo(
+    () => getDefaultHubTab(hub.currentEdition),
+    [hub.currentEdition],
+  );
+  const { tab, setTab } = useClientTab(defaultTab, "tab");
+
   return (
-    <Suspense fallback={<div className="h-12 animate-pulse card-surface" />}>
+    <Suspense
+      fallback={
+        <div className="h-40 animate-pulse rounded-lg border border-white/[0.06] bg-white/[0.02]" />
+      }
+    >
       <CompetitionHubHeader
         competition={hub.competition}
+        editions={hub.editions}
         currentEdition={hub.currentEdition}
+        tabs={tabs}
+        activeTab={tab}
+        onTabChange={setTab}
+        accentColor={accentColor}
       />
-      <HubContent hub={hub} />
+      <HubContent hub={hub} accentColor={accentColor} tab={tab} />
     </Suspense>
   );
 }

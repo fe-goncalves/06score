@@ -27,7 +27,7 @@ export function MatchesCarousel({ recent, upcoming }: MatchesCarouselProps) {
       <div className="page-container mb-4">
         <SectionTitle>Jogos</SectionTitle>
       </div>
-      <div className="page-edge-x flex gap-3 overflow-x-auto pb-1 snap-x-mandatory scrollbar-hide">
+      <div className="page-edge-x flex gap-3 overflow-x-auto pb-1 snap-x-mandatory">
         {all.map((match, i) => (
           <MatchCard key={match.id} match={match} index={i} />
         ))}

@@ -12,6 +12,11 @@
   --color-secondary: #888888;
   --live-border: rgba(255, 107, 0, 0.3);
   --live-bg: rgba(255, 107, 0, 0.04);
+  --scrollbar-size: 8px;
+  --scrollbar-track: rgba(255, 255, 255, 0.08);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.34);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.5);
+  --scrollbar-thumb-active: color-mix(in srgb, var(--color-brand) 35%, rgba(255, 255, 255, 0.45));
 }
 
 @theme inline {
@@ -21,6 +26,7 @@
   --color-secondary: var(--color-secondary);
   --color-card: var(--card);
   --font-display: "Barlow Condensed", ui-sans-serif, system-ui, sans-serif;
+  --font-home-title: "Space Grotesk", "Barlow Condensed", ui-sans-serif, sans-serif;
   --font-mono: "Space Mono", ui-monospace, monospace;
   --font-body: "Barlow", ui-sans-serif, system-ui, sans-serif;
 }
@@ -49,6 +55,25 @@ body::before {
 
 .font-mono-label {
   font-family: "Space Mono", ui-monospace, monospace;
+}
+
+.font-mono-bold {
+  font-family: "Space Mono", ui-monospace, monospace;
+  font-weight: 700;
+}
+
+/* Home — títulos em Space Grotesk (preview) */
+.home-page .font-display,
+.home-page .section-title,
+.home-page .motw-card-surname {
+  font-family: var(--font-home-title);
+  letter-spacing: -0.025em;
+}
+
+.home-page .font-display.font-black,
+.home-page .font-display.font-bold,
+.home-page .section-title {
+  font-weight: 700;
 }
 
 .font-body {
@@ -215,20 +240,12 @@ body::before {
 
 /* ── Standings row hover ───────────────────────────────────────────────────── */
 
-.standings-row {
-  transition: background 0.15s ease;
-}
-
-.standings-row:hover {
-  background: rgba(255, 107, 0, 0.04);
-}
-
 .standings-row:hover .standings-pts {
-  color: var(--color-brand);
+  color: var(--standings-row-marker, var(--standings-accent, var(--color-brand)));
 }
 
 .standings-pts {
-  transition: color 0.15s ease;
+  transition: color 0.28s ease;
 }
 
 /* ── Match results strip (Ligue 1 style) ───────────────────────────────────── */
@@ -340,6 +357,77 @@ body::before {
 
 /* ── News journal grid ───────────────────────────────────────────────────── */
 
+.news-journal-section {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.news-journal-mobile {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.news-journal-mobile-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 107, 0, 0.45) rgba(255, 255, 255, 0.06);
+  padding-bottom: 0.35rem;
+}
+
+.news-journal-mobile-scroll::-webkit-scrollbar {
+  height: 5px;
+}
+
+.news-journal-mobile-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 9999px;
+}
+
+.news-journal-mobile-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 0, 0.45);
+  border-radius: 9999px;
+}
+
+.news-journal-mobile-track {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  width: max-content;
+  min-width: min(100%, 100%);
+  padding-right: 0.25rem;
+}
+
+.news-journal-mobile-panel {
+  flex: 0 0 min(88vw, 300px);
+  width: min(88vw, 300px);
+  max-width: 300px;
+}
+
+.news-journal-mobile-news {
+  flex: 0 0 min(88vw, 280px);
+  width: min(88vw, 280px);
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+}
+
+.news-journal-list {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.news-journal-list-item {
+  padding: 0.85rem 1rem;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.news-journal-list-item:active,
+.news-journal-list-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .news-journal-grid {
   display: grid;
   background: rgba(255, 255, 255, 0.02);
@@ -354,6 +442,38 @@ body::before {
 .news-side-panel {
   --news-panel-color: var(--color-brand);
   position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.news-side-panel-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 107, 0, 0.35) transparent;
+}
+
+.news-side-panel-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.news-side-panel-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 0, 0.35);
+  border-radius: 9999px;
+}
+
+.news-side-panel .standings-table-root {
+  width: 100%;
+  min-width: 260px;
+  --standings-name: 0.75rem;
+  --standings-row-pad-y: 0.5rem;
+}
+
+.news-side-panel .standings-view-switcher-btn {
+  min-height: 2rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.5625rem;
 }
 
 .news-side-panel::before {
@@ -748,32 +868,134 @@ body::before {
   background: var(--color-brand);
 }
 
-.hero-timeline {
+.hero-slide-caption {
+  padding-bottom: 3.25rem;
+}
+
+@media (min-width: 768px) {
+  .hero-slide-caption {
+    padding-bottom: 3.5rem;
+  }
+}
+
+.hero-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 30;
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.55);
+  font-family: "Barlow Condensed", ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.75rem;
+  line-height: 1;
+  color: white;
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.hero-carousel-arrow:hover {
+  border-color: color-mix(in srgb, var(--color-brand) 50%, transparent);
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--color-brand);
+}
+
+.hero-carousel-arrow-prev {
+  left: 0.75rem;
+}
+
+.hero-carousel-arrow-next {
+  right: 0.75rem;
+}
+
+.hero-carousel-controls {
+  position: absolute;
+  inset-inline: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+
+.hero-carousel-controls > * {
   pointer-events: auto;
 }
 
-.hero-timeline-dot {
-  background: rgba(255, 255, 255, 0.28);
+.hero-carousel-dots {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hero-carousel-dot {
+  height: 0.5rem;
+  width: 0.5rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.35);
+  padding: 0;
+  cursor: pointer;
   transition:
-    background 0.25s ease,
-    transform 0.2s ease;
+    transform 0.2s ease,
+    background 0.2s ease,
+    width 0.2s ease;
 }
 
-.hero-timeline-dot-active {
+.hero-carousel-dot-active {
+  width: 1.25rem;
+  background: var(--color-brand);
+}
+
+.hero-carousel-dot:hover {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.motw-card {
+  position: relative;
+  min-height: 160px;
+  background: #070b12;
+  isolation: isolate;
+}
+
+.motw-card-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
   background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--color-brand) 80%, #ffffff 20%),
-    var(--color-brand)
+    120deg,
+    color-mix(in srgb, var(--motw-color) 85%, #ffffff 15%),
+    rgba(255, 255, 255, 0.08) 35%,
+    color-mix(in srgb, var(--motw-color) 55%, transparent) 55%,
+    rgba(255, 255, 255, 0.06) 75%,
+    color-mix(in srgb, var(--motw-color) 85%, #ffffff 15%)
   );
-  background-size: 220% 100%;
-  animation: hero-timeline-flow 1.8s linear infinite;
+  background-size: 320% 320%;
+  animation: motw-border-flow 5s linear infinite;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 5;
 }
 
-.hero-timeline-dot:hover {
-  transform: translateY(-1px);
-}
-
-@keyframes hero-timeline-flow {
+@keyframes motw-border-flow {
   0% {
     background-position: 0% 50%;
   }
@@ -782,9 +1004,30 @@ body::before {
   }
 }
 
-.motw-card {
-  min-height: 160px;
-  background: #070b12;
+.motw-card-team-logo {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 12;
+  display: flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.45);
+  padding: 0.35rem;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+  transition: transform 0.3s ease;
+}
+
+.motw-card:hover .motw-card-team-logo {
+  transform: scale(1.06);
+}
+
+.motw-card-surname {
+  letter-spacing: -0.02em;
 }
 
 .motw-card-bg {
@@ -813,8 +1056,19 @@ body::before {
       rgba(0, 0, 0, 0.15) 45%,
       transparent 72%
     );
+  background-size: 100% 100%, 220% 220%;
+  animation: motw-accent-flow 7s linear infinite;
   opacity: 0.95;
   transition: opacity 0.35s ease;
+}
+
+@keyframes motw-accent-flow {
+  0% {
+    background-position: 0% 50%, 0% 50%;
+  }
+  100% {
+    background-position: 0% 50%, 100% 50%;
+  }
 }
 
 .motw-card::before {
@@ -959,6 +1213,23 @@ body::before {
   z-index: 1;
 }
 
+.highlight-card-team-logo {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 20;
+  display: flex;
+  height: 2.35rem;
+  width: 2.35rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.62);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  padding: 0.3rem;
+}
+
 .highlight-card:hover {
   border-color: color-mix(
     in srgb,
@@ -1039,6 +1310,14 @@ body::before {
   }
 }
 
+/* ── TOTW (Seleção da Rodada) ──────────────────────────────────────────────── */
+
+@import "./totw-home.css";
+@import "./competitions.css";
+@import "./match.css";
+@import "./athlete.css";
+@import "./lab-tots-pitch.css";
+
 /* ── TikTok embeds ─────────────────────────────────────────────────────────── */
 
 .tiktok-scroll {
@@ -1094,12 +1373,107 @@ body::before {
 }
 
 .hero-next-match-row {
-  transition: border-color 0.2s ease, background 0.2s ease;
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.55rem 0.65rem;
+  text-decoration: none;
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease;
+}
+
+.hero-next-match-row-glow {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--row-accent, var(--color-brand)) 22%, transparent) 0%,
+    transparent 55%,
+    color-mix(in srgb, var(--row-accent, var(--color-brand)) 12%, transparent) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
 }
 
 .hero-next-match-row:hover {
-  border-color: rgba(255, 107, 0, 0.4);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: color-mix(
+    in srgb,
+    var(--row-accent, var(--color-brand)) 45%,
+    rgba(255, 255, 255, 0.12)
+  );
+  transform: translateY(-1px);
+}
+
+.hero-next-match-row:hover .hero-next-match-row-glow {
+  opacity: 1;
+}
+
+.hero-next-match-row-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hero-next-match-logos {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.hero-next-match-vs {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.hero-next-match-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.hero-next-match-date {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-brand);
+  line-height: 1.2;
+}
+
+.hero-next-match-names {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.hero-next-match-comp-logo {
+  height: 1.75rem;
+  width: 1.75rem;
+  object-fit: contain;
+  opacity: 0.9;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.hero-next-match-row:hover .hero-next-match-comp-logo {
+  opacity: 1;
+  transform: scale(1.06);
 }
 
 .hero-standings-card {
@@ -1110,6 +1484,16 @@ body::before {
 .hero-standings-header {
   background: rgba(255, 107, 0, 0.08);
   border-bottom: 1px solid rgba(255, 107, 0, 0.15);
+}
+
+.hero-standings-body .standings-table-toolbar {
+  padding: 0 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.hero-standings-body .standings-table-root {
+  --standings-name: 0.75rem;
+  --standings-row-pad-y: 0.5rem;
 }
 
 /* ── Typography ──────────────────────────────────────────────────────────── */
@@ -1134,6 +1518,80 @@ body::before {
   scroll-snap-align: start;
 }
 
+/* Mobile: rolagem por toque, sem barra visível */
+html,
+body,
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Desktop: scrollbar com identidade visual 06.score */
+@media (min-width: 768px) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  *::-webkit-scrollbar {
+    display: block;
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: var(--scrollbar-track);
+  }
+
+  *::-webkit-scrollbar-button,
+  *::-webkit-scrollbar-button:single-button,
+  *::-webkit-scrollbar-button:horizontal,
+  *::-webkit-scrollbar-button:vertical {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+      135deg,
+      var(--scrollbar-thumb),
+      color-mix(in srgb, var(--scrollbar-thumb) 70%, transparent)
+    );
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(
+      135deg,
+      var(--scrollbar-thumb-hover),
+      color-mix(in srgb, var(--color-brand) 20%, var(--scrollbar-thumb-hover))
+    );
+  }
+
+  *::-webkit-scrollbar-thumb:active {
+    background: var(--scrollbar-thumb-active);
+  }
+}
+
+/* Áreas que devem rolar sem barra visível */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -1141,6 +1599,8 @@ body::before {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+  width: 0;
+  height: 0;
 }
 
 /* ── Page layout ─────────────────────────────────────────────────────────── */

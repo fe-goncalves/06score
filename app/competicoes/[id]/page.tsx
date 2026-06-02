@@ -1,41 +1,45 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CompetitionHubClient } from "@/components/competition/CompetitionHubClient";
-import { getCompetitionHub } from "@/lib/data/competition";
-import { getOrgSlug, getOrganization } from "@/lib/org";
+import {
+  getCachedCompetitionHub,
+  getCachedOrganization,
+  getCompetitionTitle,
+} from "@/lib/data/cached";
+import { getOrgSlug } from "@/lib/org";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ edition?: string; tab?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps) {
   const { id } = await params;
   const slug = await getOrgSlug();
-  const org = await getOrganization(slug);
+  const org = await getCachedOrganization(slug);
   if (!org) return { title: "Competição" };
 
-  const hub = await getCompetitionHub(id, org.id);
-  return { title: hub?.competition.full_name ?? "Competição" };
+  const title = await getCompetitionTitle(id, org.id);
+  return { title: title ?? "Competição" };
 }
 
-export default async function CompetitionHubPage({ params }: PageProps) {
+export default async function CompetitionHubPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { id } = await params;
+  const { edition } = await searchParams;
   const slug = await getOrgSlug();
-  const org = await getOrganization(slug);
+  const org = await getCachedOrganization(slug);
   if (!org) return null;
 
-  const hub = await getCompetitionHub(id, org.id);
+  const hub = await getCachedCompetitionHub(id, org.id, edition);
   if (!hub) notFound();
 
   return (
-    <div className="page-container py-8 md:py-10">
-      <Link
-        href="/competicoes"
-        className="mb-8 inline-block text-[11px] font-bold uppercase tracking-widest text-white/50 transition-colors hover:text-[var(--color-brand)]"
-      >
-        ← Competições
-      </Link>
-      <CompetitionHubClient hub={hub} />
+    <div className="competitions-page pb-14">
+      <div className="page-container pt-6 md:pt-8">
+        <CompetitionHubClient hub={hub} />
+      </div>
     </div>
   );
 }

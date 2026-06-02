@@ -1,3 +1,4 @@
+import { getTopTeamLeaderForCompetition } from "@/lib/data/home";
 import { getSupabase } from "@/lib/supabase";
 import type {
   AthleteStatLeader,
@@ -9,17 +10,18 @@ import type {
 } from "@/lib/types";
 
 const ATHLETE_SELECT =
-  "goals, assists, athletes(id, full_name, surname, photo_url), teams(full_name, short_name, logo_url, primary_color)";
+  "goals, assists, athletes(id, full_name, surname, photo_url), teams(id, full_name, short_name, abbreviation, logo_url, primary_color)";
 
 const CAREER_SELECT =
-  "total_goals, total_assists, athletes(id, full_name, surname, photo_url, athlete_team_stints(is_current, teams(full_name, short_name, logo_url, primary_color)))";
+  "total_goals, total_assists, athletes(id, full_name, surname, photo_url)";
+
+const TEAM_CAREER_SELECT =
+  "teams!inner(id, full_name, short_name, abbreviation, logo_url, primary_color, gender)";
 
 type CareerStatsRow = {
   total_goals: number | null;
   total_assists: number | null;
-  athletes: AthleteStatLeader["athletes"] & {
-    athlete_team_stints?: { is_current: boolean; teams: Team | null }[];
-  };
+  athletes: AthleteStatLeader["athletes"];
 };
 
 type AggregatedAthlete = {
@@ -29,14 +31,156 @@ type AggregatedAthlete = {
   teams: AthleteStatLeader["teams"];
 };
 
-function pickTeamFromCareerRow(row: {
-  athletes?: {
-    athlete_team_stints?: { is_current: boolean; teams: Team | null }[];
-  } | null;
-}): Team | null {
-  const stints = row.athletes?.athlete_team_stints ?? [];
-  const current = stints.find((s) => s.is_current);
-  return current?.teams ?? stints[0]?.teams ?? null;
+type AthleteEditionRow = {
+  goals: number | null;
+  assists: number | null;
+  athletes: AthleteStatLeader["athletes"];
+  teams?: Team | Team[] | null;
+  edition_teams?: { teams?: Team | Team[] | null } | { teams?: Team | Team[] | null }[] | null;
+};
+
+type AthleteStintRow = {
+  athlete_id: string;
+  is_current: boolean | null;
+  teams: Team | Team[] | null;
+};
+
+function normalizeTeamValue(value: unknown): Team | null {
+  if (!value) return null;
+  if (Array.isArray(value)) {
+    const first = value[0];
+    return first && typeof first === "object" ? (first as Team) : null;
+  }
+  return typeof value === "object" ? (value as Team) : null;
+}
+
+function teamFromEditionStatsRow(row: AthleteEditionRow): Team | null {
+  const direct = normalizeTeamValue(row.teams);
+  if (direct) return direct;
+  const editionTeam = row.edition_teams;
+  if (Array.isArray(editionTeam)) {
+    for (const entry of editionTeam) {
+      const team = normalizeTeamValue(entry?.teams);
+      if (team) return team;
+    }
+    return null;
+  }
+  return normalizeTeamValue(editionTeam?.teams);
+}
+
+async function getFallbackTeamsForAthletes(
+  athleteIds: string[],
+  editionIds: string[] = [],
+): Promise<Map<string, Team>> {
+  if (!athleteIds.length) return new Map<string, Team>();
+
+  const supabase = getSupabase();
+  const map = new Map<string, Team>();
+
+  if (editionIds.length) {
+    const { data: editionRows, error: editionError } = await supabase
+      .from("athlete_edition_stats")
+      .select(
+        "athlete_id, edition_teams(team_id, teams(id, full_name, short_name, abbreviation, logo_url, primary_color))",
+      )
+      .in("edition_id", editionIds)
+      .in("athlete_id", athleteIds);
+
+    if (editionError) {
+      console.error(
+        "[getFallbackTeamsForAthletes] edition",
+        editionError.message,
+      );
+    } else {
+      for (const row of editionRows ?? []) {
+        const athleteId = row.athlete_id as string | undefined;
+        if (!athleteId || map.has(athleteId)) continue;
+        const team = teamFromEditionStatsRow(row as AthleteEditionRow);
+        if (team) map.set(athleteId, team);
+      }
+    }
+  }
+
+  const missingIds = athleteIds.filter((id) => !map.has(id));
+  if (!missingIds.length) return map;
+
+  const { data, error } = await supabase
+    .from("athlete_team_stints")
+    .select(
+      "athlete_id, is_current, teams(id, full_name, short_name, abbreviation, logo_url, primary_color)",
+    )
+    .in("athlete_id", missingIds)
+    .order("is_current", { ascending: false });
+
+  if (error) {
+    console.error("[getFallbackTeamsForAthletes] stints", error.message);
+    return map;
+  }
+
+  for (const row of (data ?? []) as AthleteStintRow[]) {
+    if (map.has(row.athlete_id)) continue;
+    const team = normalizeTeamValue(row.teams);
+    if (team) map.set(row.athlete_id, team);
+  }
+  return map;
+}
+
+/** Equipe atual do atleta (stint com is_current = true). */
+async function getCurrentTeamsForAthletes(
+  athleteIds: string[],
+): Promise<Map<string, Team>> {
+  if (!athleteIds.length) return new Map<string, Team>();
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("athlete_team_stints")
+    .select(
+      "athlete_id, is_current, teams(id, full_name, short_name, abbreviation, logo_url, primary_color)",
+    )
+    .in("athlete_id", athleteIds)
+    .eq("is_current", true);
+
+  if (error) {
+    console.error("[getCurrentTeamsForAthletes]", error.message);
+    return new Map<string, Team>();
+  }
+
+  const map = new Map<string, Team>();
+  for (const row of (data ?? []) as AthleteStintRow[]) {
+    if (!row.athlete_id || map.has(row.athlete_id)) continue;
+    const team = normalizeTeamValue(row.teams);
+    if (team) map.set(row.athlete_id, team);
+  }
+  return map;
+}
+
+async function applyCurrentTeamToOrgLeaders(leaders: {
+  topScorer: AthleteStatLeader | null;
+  topAssister: AthleteStatLeader | null;
+}): Promise<{
+  topScorer: AthleteStatLeader | null;
+  topAssister: AthleteStatLeader | null;
+}> {
+  const athleteIds = [
+    leaders.topScorer?.athletes?.id,
+    leaders.topAssister?.athletes?.id,
+  ].filter((id): id is string => Boolean(id));
+
+  const currentTeams = await getCurrentTeamsForAthletes(athleteIds);
+
+  const withCurrentTeam = (
+    leader: AthleteStatLeader | null,
+  ): AthleteStatLeader | null => {
+    if (!leader?.athletes?.id) return leader;
+    const team = currentTeams.get(leader.athletes.id);
+    if (!team) return leader;
+    return { ...leader, teams: team };
+  };
+
+  return {
+    topScorer: withCurrentTeam(leaders.topScorer),
+    topAssister: withCurrentTeam(leaders.topAssister),
+  };
 }
 
 function toAthleteLeader(
@@ -55,17 +199,33 @@ async function getEditionIdsForCompetition(
   competitionId: string,
 ): Promise<string[]> {
   const supabase = getSupabase();
-  const { data, error } = await supabase
+
+  const { data: current, error: currentError } = await supabase
+    .from("competition_editions")
+    .select("id")
+    .eq("competition_id", competitionId)
+    .eq("is_current", true);
+
+  if (currentError) {
+    console.error("[getEditionIdsForCompetition]", currentError.message);
+    return [];
+  }
+
+  if (current?.length) {
+    return current.map((e) => e.id);
+  }
+
+  const { data: all, error: allError } = await supabase
     .from("competition_editions")
     .select("id")
     .eq("competition_id", competitionId);
 
-  if (error) {
-    console.error("[getEditionIdsForCompetition]", error.message);
+  if (allError) {
+    console.error("[getEditionIdsForCompetition] fallback", allError.message);
     return [];
   }
 
-  return (data ?? []).map((e) => e.id);
+  return (all ?? []).map((e) => e.id);
 }
 
 async function getEditionIdsForOrg(orgId: string): Promise<string[]> {
@@ -106,7 +266,7 @@ async function aggregateAthleteLeaders(
 
   const byAthlete = new Map<string, AggregatedAthlete>();
 
-  for (const row of data ?? []) {
+  for (const row of (data ?? []) as AthleteEditionRow[]) {
     const athlete = row.athletes as AthleteStatLeader["athletes"];
     const athleteId = athlete?.id;
     if (!athleteId) continue;
@@ -115,25 +275,44 @@ async function aggregateAthleteLeaders(
     const assists = (row.assists as number | null) ?? 0;
     const prev = byAthlete.get(athleteId);
 
+    const teamFromRow = teamFromEditionStatsRow(row);
     byAthlete.set(athleteId, {
       goals: (prev?.goals ?? 0) + goals,
       assists: (prev?.assists ?? 0) + assists,
       athletes: athlete,
-      teams: (row.teams as Team | null) ?? prev?.teams ?? null,
+      teams: teamFromRow ?? prev?.teams ?? null,
     });
   }
 
   const aggregated = [...byAthlete.values()];
   const topScorer = [...aggregated].sort((a, b) => b.goals - a.goals)[0];
   const topAssister = [...aggregated].sort((a, b) => b.assists - a.assists)[0];
+  const topScorerLeader =
+    topScorer && topScorer.goals > 0 ? toAthleteLeader(topScorer) : null;
+  const topAssisterLeader =
+    topAssister && topAssister.assists > 0 ? toAthleteLeader(topAssister) : null;
+
+  const fallbackIds = [
+    topScorerLeader?.athletes?.id,
+    topAssisterLeader?.athletes?.id,
+  ].filter((id): id is string => Boolean(id));
+  const fallbackTeams = await getFallbackTeamsForAthletes(
+    fallbackIds,
+    editionIds,
+  );
+
+  const withFallbackTeam = (
+    leader: AthleteStatLeader | null,
+  ): AthleteStatLeader | null => {
+    if (!leader?.athletes?.id || leader.teams) return leader;
+    const team = fallbackTeams.get(leader.athletes.id);
+    if (!team) return leader;
+    return { ...leader, teams: team };
+  };
 
   return {
-    topScorer:
-      topScorer && topScorer.goals > 0 ? toAthleteLeader(topScorer) : null,
-    topAssister:
-      topAssister && topAssister.assists > 0
-        ? toAthleteLeader(topAssister)
-        : null,
+    topScorer: withFallbackTeam(topScorerLeader),
+    topAssister: withFallbackTeam(topAssisterLeader),
   };
 }
 
@@ -177,7 +356,8 @@ async function getOrgAthleteLeaders(
     if (assisterRes.error) {
       console.error("[getOrgAthleteLeaders] assister", assisterRes.error.message);
     }
-    return aggregateAthleteLeaders(editionIds);
+    const aggregated = await aggregateAthleteLeaders(editionIds);
+    return applyCurrentTeamToOrgLeaders(aggregated);
   }
 
   const mapRow = (row: CareerStatsRow | null): AthleteStatLeader | null => {
@@ -186,121 +366,73 @@ async function getOrgAthleteLeaders(
       goals: row.total_goals ?? 0,
       assists: row.total_assists ?? 0,
       athletes: row.athletes,
-      teams: pickTeamFromCareerRow(row),
+      teams: null,
     };
   };
 
   const scorerRow = scorerRes.data as CareerStatsRow | null;
   const assisterRow = assisterRes.data as CareerStatsRow | null;
 
-  return {
+  return applyCurrentTeamToOrgLeaders({
     topScorer: mapRow(scorerRow),
     topAssister: mapRow(assisterRow),
-  };
+  });
 }
 
-async function getTopTeamByTitlesForEditions(
-  editionIds: string[],
-  options?: { includeCurrent?: boolean },
-): Promise<TeamStatLeader | null> {
-  if (!editionIds.length) return null;
+function normalizeTeamLeaderRow(
+  teams: Team | Team[] | null | undefined,
+): Team | null {
+  return normalizeTeamValue(teams);
+}
 
+/** Escopo "Todas": maior total_titles em team_career_stats. */
+async function getTopTeamByTitlesForOrg(
+  orgId: string,
+  gender: string | null,
+): Promise<TeamStatLeader | null> {
   const supabase = getSupabase();
 
-  const { data: editions, error: edError } = await supabase
-    .from("competition_editions")
-    .select("id, is_current")
-    .in("id", editionIds);
+  let query = supabase
+    .from("team_career_stats")
+    .select(`total_titles, ${TEAM_CAREER_SELECT}`)
+    .eq("organization_id", orgId)
+    .gt("total_titles", 0)
+    .order("total_titles", { ascending: false })
+    .limit(1);
 
-  if (edError) {
-    console.error("[getTopTeamByTitlesForEditions]", edError.message);
+  if (gender) {
+    query = query.eq("teams.gender", gender);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    console.error("[getTopTeamByTitlesForOrg]", error.message);
     return null;
   }
 
-  const championEditionIds = (editions ?? [])
-    .filter((e) => options?.includeCurrent || !e.is_current)
-    .map((e) => e.id);
+  if (!data?.teams) return null;
 
-  const titleCounts = new Map<string, { team: Team; count: number }>();
-
-  if (championEditionIds.length > 0) {
-    await Promise.all(
-      championEditionIds.map(async (editionId) => {
-        const { data, error } = await supabase
-          .from("team_edition_stats")
-          .select(
-            "team_id, teams(id, full_name, short_name, abbreviation, logo_url, primary_color)",
-          )
-          .eq("edition_id", editionId)
-          .order("points", { ascending: false })
-          .order("goals_scored", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (error || !data?.team_id || !data.teams) return;
-
-        const team = data.teams as Team;
-        const prev = titleCounts.get(data.team_id);
-        titleCounts.set(data.team_id, {
-          team,
-          count: (prev?.count ?? 0) + 1,
-        });
-      }),
-    );
-  }
-
-  if (titleCounts.size > 0) {
-    const best = [...titleCounts.values()].sort((a, b) => b.count - a.count)[0];
-    return {
-      titles: best.count,
-      wins: null,
-      points: null,
-      teams: best.team,
-    };
-  }
-
-  const winCounts = new Map<string, { team: Team; wins: number }>();
-
-  const { data: statsRows, error: statsError } = await supabase
-    .from("team_edition_stats")
-    .select(
-      "team_id, wins, teams(id, full_name, short_name, abbreviation, logo_url, primary_color)",
-    )
-    .in("edition_id", editionIds);
-
-  if (statsError) {
-    console.error("[getTopTeamByTitlesForEditions] wins", statsError.message);
-    return null;
-  }
-
-  for (const row of statsRows ?? []) {
-    if (!row.team_id || !row.teams) continue;
-    const team = row.teams as Team;
-    const wins = (row.wins as number) ?? 0;
-    const prev = winCounts.get(row.team_id);
-    winCounts.set(row.team_id, {
-      team,
-      wins: (prev?.wins ?? 0) + wins,
-    });
-  }
-
-  const bestWins = [...winCounts.values()].sort((a, b) => b.wins - a.wins)[0];
-  if (!bestWins?.wins) return null;
+  const team = normalizeTeamLeaderRow(data.teams as Team | Team[]);
+  const titles = (data.total_titles as number) ?? 0;
+  if (!team || titles <= 0) return null;
 
   return {
-    titles: bestWins.wins,
-    wins: bestWins.wins,
+    titles,
+    wins: null,
     points: null,
-    teams: bestWins.team,
+    teams: team,
   };
 }
 
-async function getHighlightsForEditionScope(
+async function getHighlightsForCompetition(
+  competitionId: string,
   editionIds: string[],
+  gender: string | null,
 ): Promise<HomeHighlights> {
   const [{ topScorer, topAssister }, topTeamByTitles] = await Promise.all([
     aggregateAthleteLeaders(editionIds),
-    getTopTeamByTitlesForEditions(editionIds),
+    getTopTeamLeaderForCompetition(competitionId, gender),
   ]);
 
   return { topScorer, topAssister, topTeamByTitles };
@@ -316,7 +448,7 @@ export async function getHomeHighlightsBundle(
     (async (): Promise<HomeHighlights> => {
       const [athletes, topTeamByTitles] = await Promise.all([
         getOrgAthleteLeaders(orgId, orgEditionIds),
-        getTopTeamByTitlesForEditions(orgEditionIds),
+        getTopTeamByTitlesForOrg(orgId, null),
       ]);
       return {
         topScorer: athletes.topScorer,
@@ -326,7 +458,11 @@ export async function getHomeHighlightsBundle(
     })(),
     ...competitions.map(async (comp) => {
       const editionIds = await getEditionIdsForCompetition(comp.id);
-      const highlights = await getHighlightsForEditionScope(editionIds);
+      const highlights = await getHighlightsForCompetition(
+        comp.id,
+        editionIds,
+        comp.gender,
+      );
       return { competitionId: comp.id, highlights };
     }),
   ]);

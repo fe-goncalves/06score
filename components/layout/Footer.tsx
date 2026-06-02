@@ -61,9 +61,13 @@ export function Footer({ org, teams, competitions = [] }: FooterProps) {
 
       <div className="site-footer-brand py-12 md:py-16">
         <div className="page-container flex flex-col items-center gap-8">
-          <h2 className="font-display text-center text-3xl font-black uppercase tracking-wide text-white md:text-5xl">
-            {org.name}
-          </h2>
+          <OrgImage
+            src={org.logo_url}
+            alt={org.name}
+            width={180}
+            height={180}
+            className="h-20 w-20 object-contain md:h-28 md:w-28"
+          />
 
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             <Link
