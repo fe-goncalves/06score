@@ -3,6 +3,8 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { OrgImage } from "@/components/ui/OrgImage";
+import { nationalityFlagEmoji } from "@/lib/athlete/athleteHeaderFormat";
+import { teamCountryDisplay, teamGenderNavLabel } from "@/lib/team/teamLabels";
 import type { TabItem } from "@/components/ui/PageTabs";
 import type { Team } from "@/lib/types";
 
@@ -21,21 +23,17 @@ export function TeamHubHeader({
 }: TeamHubHeaderProps) {
   const accent = team.primary_color ?? "var(--color-brand)";
   const teamPrimary = team.primary_color ?? null;
-  const displayName =
-    team.short_name?.trim() || team.abbreviation?.trim() || team.full_name;
-  const subtitle = team.abbreviation?.trim() || team.full_name;
-
-  const detailItems: string[] = [];
-  if (team.abbreviation && team.abbreviation !== displayName) {
-    detailItems.push(team.abbreviation);
-  }
-  if (team.full_name && team.full_name !== displayName) {
-    detailItems.push(team.full_name);
-  }
+  const countryName = teamCountryDisplay(team.country);
+  const flag = nationalityFlagEmoji(team.country ?? "Brasil");
+  const sigla = team.abbreviation?.trim() || "—";
+  const shortName = team.short_name?.trim() || team.full_name;
+  const fullName = team.full_name?.trim() || shortName;
+  const genderLabel = teamGenderNavLabel(team.gender);
+  const breadcrumbTeamName = shortName;
 
   return (
     <header
-      className="match-hub-header athlete-hub-header"
+      className="match-hub-header athlete-hub-header team-hub-header"
       style={
         {
           "--match-accent": accent,
@@ -44,49 +42,55 @@ export function TeamHubHeader({
         } as CSSProperties
       }
     >
-      <div className="athlete-hub-header-bg" aria-hidden />
+      <div className="team-hub-header-bg" aria-hidden />
 
       <div className="match-hub-header-content athlete-hub-header-content">
         <nav className="match-hub-breadcrumb athlete-hub-breadcrumb" aria-label="Navegação">
           <Link href="/times" className="match-hub-breadcrumb-link">
-            Times
+            TIMES
           </Link>
+          {genderLabel ? (
+            <>
+              <span className="match-hub-breadcrumb-sep" aria-hidden>
+                ›
+              </span>
+              <Link href="/times" className="match-hub-breadcrumb-link">
+                {genderLabel}
+              </Link>
+            </>
+          ) : null}
           <span className="match-hub-breadcrumb-sep" aria-hidden>
             ›
           </span>
-          <span className="match-hub-breadcrumb-current">{displayName}</span>
+          <span className="match-hub-breadcrumb-current">{breadcrumbTeamName}</span>
         </nav>
 
-        <div className="athlete-hub-hero">
+        <div className="team-hub-hero">
           <OrgImage
             src={team.logo_url}
             alt={team.full_name}
-            width={72}
-            height={72}
-            className="athlete-hub-photo athlete-hub-photo--team"
+            width={80}
+            height={80}
+            className="team-hub-logo"
           />
 
-          <div className="athlete-hub-identity">
-            <h1 className="athlete-hub-surname">{displayName}</h1>
+          <div className="team-hub-identity">
+            <p className="team-hub-meta-line">
+              {flag ? (
+                <span className="team-hub-flag" aria-hidden>
+                  {flag}
+                </span>
+              ) : null}
+              <span className="team-hub-pais">{countryName}</span>
+              <span className="team-hub-meta-sep" aria-hidden>
+                ///
+              </span>
+              <span className="team-hub-sigla">{sigla}</span>
+            </p>
 
-            {subtitle && subtitle !== displayName ? (
-              <p className="athlete-hub-club athlete-hub-club--static">{subtitle}</p>
-            ) : null}
+            <h1 className="team-hub-short-name">{shortName}</h1>
 
-            {detailItems.length > 0 ? (
-              <div className="athlete-hub-details">
-                {detailItems.map((item, index) => (
-                  <span key={item} className="athlete-hub-detail-wrap">
-                    {index > 0 ? (
-                      <span className="athlete-hub-detail-sep" aria-hidden>
-                        |
-                      </span>
-                    ) : null}
-                    <span className="athlete-hub-detail">{item}</span>
-                  </span>
-                ))}
-              </div>
-            ) : null}
+            <p className="team-hub-full-name">{fullName}</p>
           </div>
         </div>
 

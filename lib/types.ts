@@ -25,6 +25,8 @@ export interface Team {
   abbreviation?: string | null;
   logo_url: string | null;
   primary_color?: string | null;
+  gender?: string | null;
+  country?: string | null;
 }
 
 export interface Year {
@@ -258,6 +260,7 @@ export interface Athlete {
   full_name: string;
   surname: string | null;
   photo_url: string | null;
+  birth_date?: string | null;
   nationality?: string | null;
   position_id?: string | null;
   player_positions?: PlayerPosition | PlayerPosition[] | null;
@@ -393,6 +396,9 @@ export interface GroupTeam {
 
 export interface AthleteCareerStats {
   total_matches: number;
+  total_wins?: number;
+  total_draws?: number;
+  total_losses?: number;
   total_goals: number;
   total_assists: number;
   total_yellow_cards: number;
@@ -716,11 +722,21 @@ export interface AthleteAwardEntry {
   award_type: string;
   edition_id: string;
   winning_team_id?: string | null;
+  athlete_id?: string | null;
   competition_editions: {
     competitions: Pick<Competition, "id" | "full_name" | "short_name" | "logo_url"> | null;
     seasons: Season | null;
   } | null;
   teams?: Pick<Team, "full_name" | "abbreviation" | "logo_url"> | null;
+  athletes?: Pick<Athlete, "id" | "full_name" | "surname" | "photo_url"> | null;
+}
+
+export interface TeamStaffMember {
+  id: string;
+  full_name: string;
+  surname: string | null;
+  photo_url: string | null;
+  role: string | null;
 }
 
 export interface StaffProfileData {
@@ -782,7 +798,14 @@ export interface TeamProfileData {
   careerSummary: TeamCareerSummary;
   squad: (Athlete & { id: string })[];
   editionStats: TeamEditionStatRow[];
+  /** Posição na tabela por `edition_id`. */
+  editionPositions: Record<string, number | null>;
+  statsPhases: AthleteStatsPhaseRecord[];
   teamAwards: AthleteAwardEntry[];
+  individualAwards: AthleteAwardEntry[];
+  venue: OrgVenue | null;
+  foundedYear: number | null;
+  staff: TeamStaffMember[];
   recentMatches: AthleteRecentMatch[];
 }
 
@@ -819,26 +842,46 @@ export interface NewsArticleDetail {
 
 // ─── Hall da Fama ─────────────────────────────────────────────────────────────
 
+export interface HallEntryContext {
+  match_date?: string | null;
+  team_a?: string | null;
+  team_b?: string | null;
+  score?: string | null;
+  competition?: string | null;
+}
+
 export interface HallEntry {
   id: string;
   name: string;
   photo_url: string | null;
   value: number;
+  /** Texto auxiliar (equipe, edição, placar). */
   team_name?: string | null;
   team_logo?: string | null;
+  /** Valor formatado quando não é número simples (ex.: "85%"). */
+  value_display?: string | null;
+  /** Contexto estruturado (cache / métricas por jogo). */
+  context?: HallEntryContext | null;
 }
 
 export interface HallCategory {
   key: string;
   label: string;
   section: "athletes" | "teams" | "staff";
+  valueLabel: string;
   entries: HallEntry[];
 }
 
 export interface HallFilterOptions {
-  competitions: { id: string; full_name: string; short_name: string | null; gender: string | null }[];
-  editions: { id: string; competition_id: string; season_name: string }[];
-  teams: { id: string; full_name: string }[];
+  competitions: {
+    id: string;
+    full_name: string;
+    short_name: string | null;
+    gender: string | null;
+    logo_url?: string | null;
+  }[];
+  editions: { id: string; competition_id: string; season_name: string; year: number | null }[];
+  years: { id: string; label: string }[];
 }
 
 export interface HallSectionData {
@@ -847,9 +890,13 @@ export interface HallSectionData {
   staff: HallCategory[];
 }
 
+export type HallGender = "male" | "female" | "all";
+
+export type HallEntityTab = "athletes" | "teams";
+
 export interface HallFilters {
   competitionId: string;
   editionId: string;
-  teamId: string;
-  gender: string;
+  year: string;
+  gender: HallGender | "";
 }

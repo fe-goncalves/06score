@@ -418,6 +418,7 @@ export const PHASE_SELECT = `
   competition_editions!phases_edition_id_fkey(
     id,
     is_current,
+    seasons ( id, name ),
     competitions!competition_editions_competition_id_fkey(
       id,
       full_name,

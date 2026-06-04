@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { NewsJournalCard } from "@/components/news/NewsJournalCard";
+import { StatsTablePager } from "@/components/team/StatsTableControls";
 import { SectionEnter } from "@/components/ui/SectionEnter";
 import type { NewsArticleListItem } from "@/lib/types";
+
+const PAGE_SIZE = 20;
 
 interface NewsListClientProps {
   articles: NewsArticleListItem[];
@@ -13,13 +16,29 @@ interface NewsListClientProps {
 
 export function NewsListClient({ articles, competitions }: NewsListClientProps) {
   const [filter, setFilter] = useState("");
+  const [page, setPage] = useState(0);
 
   const filtered = useMemo(() => {
     if (!filter) return articles;
     return articles.filter((a) => a.competition_ids.includes(filter));
   }, [articles, filter]);
 
-  const [featured, ...rest] = filtered;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages - 1));
+  }, [totalPages]);
+
+  const paginated = filtered.slice(
+    currentPage * PAGE_SIZE,
+    currentPage * PAGE_SIZE + PAGE_SIZE,
+  );
+
+  function handleFilterChange(nextFilter: string) {
+    setFilter(nextFilter);
+    setPage(0);
+  }
 
   return (
     <SectionEnter className="page-container pb-14 pt-2">
@@ -28,7 +47,7 @@ export function NewsListClient({ articles, competitions }: NewsListClientProps) 
           <div className="competition-hub-tabs-track">
             <button
               type="button"
-              onClick={() => setFilter("")}
+              onClick={() => handleFilterChange("")}
               className={`competition-hub-tab ${!filter ? "competition-hub-tab-active" : ""}`}
               style={{ "--tab-accent": "var(--color-brand)" } as CSSProperties}
             >
@@ -38,7 +57,7 @@ export function NewsListClient({ articles, competitions }: NewsListClientProps) 
               <button
                 key={c.id}
                 type="button"
-                onClick={() => setFilter(c.id)}
+                onClick={() => handleFilterChange(c.id)}
                 className={`competition-hub-tab ${filter === c.id ? "competition-hub-tab-active" : ""}`}
                 style={{ "--tab-accent": "var(--color-brand)" } as CSSProperties}
               >
@@ -55,20 +74,18 @@ export function NewsListClient({ articles, competitions }: NewsListClientProps) 
         </p>
       ) : (
         <>
-          {featured && (
-            <div className="news-list-featured">
-              <NewsJournalCard article={featured} featured />
-            </div>
-          )}
-          {rest.length > 0 && (
-            <div className="news-list-grid">
-              {rest.map((article) => (
-                <div key={article.id} className="news-list-grid-item">
-                  <NewsJournalCard article={article} />
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="news-list-grid">
+            {paginated.map((article) => (
+              <div key={article.id} className="news-list-grid-item">
+                <NewsJournalCard article={article} />
+              </div>
+            ))}
+          </div>
+          <StatsTablePager
+            page={currentPage}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
         </>
       )}
     </SectionEnter>

@@ -1,13 +1,18 @@
 import type { TeamCareerSummary, TeamEditionStatRow } from "@/lib/types";
+import { teamEditionEnrollmentLabel } from "@/lib/team/editionLabels";
 
 export interface TeamStatsFilterState {
   year: string;
+  seasonId: string;
   competitionId: string;
+  phaseKey: string;
 }
 
 export interface TeamStatsFilterOptions {
   years: { id: string; label: string }[];
+  seasons: { id: string; label: string }[];
   competitions: { id: string; label: string; logoUrl: string | null }[];
+  editions: { id: string; label: string }[];
 }
 
 export interface TeamStatsNumericSlice {
@@ -17,7 +22,10 @@ export interface TeamStatsNumericSlice {
   losses: number;
   goals_scored: number;
   goals_conceded: number;
+  goal_difference: number;
   points: number;
+  yellow_cards: number;
+  red_cards: number;
 }
 
 export interface TeamStatsSeasonGroup {
@@ -36,7 +44,11 @@ export function getYearValue(row: TeamEditionStatRow): number | null {
 }
 
 export function getCompetitionId(row: TeamEditionStatRow): string | null {
-  return row.competition_editions?.competition_id ?? null;
+  return (
+    row.competition_editions?.competition_id ??
+    row.competition_editions?.competitions?.id ??
+    null
+  );
 }
 
 export function getSeasonId(row: TeamEditionStatRow): string | null {
@@ -52,8 +64,15 @@ export function getSeasonName(row: TeamEditionStatRow): string | null {
   return name || null;
 }
 
+function withGoalDifference(slice: Omit<TeamStatsNumericSlice, "goal_difference">): TeamStatsNumericSlice {
+  return {
+    ...slice,
+    goal_difference: slice.goals_scored - slice.goals_conceded,
+  };
+}
+
 function sumNumeric(rows: TeamEditionStatRow[]): TeamStatsNumericSlice {
-  return rows.reduce(
+  const base = rows.reduce(
     (acc, row) => ({
       matches_played: acc.matches_played + row.matches_played,
       wins: acc.wins + row.wins,
@@ -62,6 +81,8 @@ function sumNumeric(rows: TeamEditionStatRow[]): TeamStatsNumericSlice {
       goals_scored: acc.goals_scored + row.goals_scored,
       goals_conceded: acc.goals_conceded + row.goals_conceded,
       points: acc.points + row.points,
+      yellow_cards: acc.yellow_cards + (row.yellow_cards ?? 0),
+      red_cards: acc.red_cards + (row.red_cards ?? 0),
     }),
     {
       matches_played: 0,
@@ -71,12 +92,15 @@ function sumNumeric(rows: TeamEditionStatRow[]): TeamStatsNumericSlice {
       goals_scored: 0,
       goals_conceded: 0,
       points: 0,
+      yellow_cards: 0,
+      red_cards: 0,
     },
   );
+  return withGoalDifference(base);
 }
 
 export function sliceFromEditionRow(row: TeamEditionStatRow): TeamStatsNumericSlice {
-  return {
+  return withGoalDifference({
     matches_played: row.matches_played,
     wins: row.wins,
     draws: row.draws,
@@ -84,11 +108,18 @@ export function sliceFromEditionRow(row: TeamEditionStatRow): TeamStatsNumericSl
     goals_scored: row.goals_scored,
     goals_conceded: row.goals_conceded,
     points: row.points,
-  };
+    yellow_cards: row.yellow_cards ?? 0,
+    red_cards: row.red_cards ?? 0,
+  });
 }
 
 export function hasActiveStatsFilters(filters: TeamStatsFilterState): boolean {
-  return filters.year !== "all" || filters.competitionId !== "all";
+  return (
+    filters.year !== "all" ||
+    filters.seasonId !== "all" ||
+    filters.competitionId !== "all" ||
+    filters.phaseKey !== "all"
+  );
 }
 
 export function buildTotalsFromEditionRows(
@@ -97,8 +128,11 @@ export function buildTotalsFromEditionRows(
   return sumNumeric(rows);
 }
 
-export function buildCareerTotalsRow(summary: TeamCareerSummary): TeamStatsNumericSlice {
-  return {
+export function buildCareerTotalsRow(
+  summary: TeamCareerSummary,
+  cardTotals?: { yellow_cards: number; red_cards: number },
+): TeamStatsNumericSlice {
+  return withGoalDifference({
     matches_played: summary.matches,
     wins: summary.wins,
     draws: summary.draws,
@@ -106,18 +140,35 @@ export function buildCareerTotalsRow(summary: TeamCareerSummary): TeamStatsNumer
     goals_scored: summary.goals_scored,
     goals_conceded: summary.goals_conceded,
     points: summary.points,
-  };
+    yellow_cards: cardTotals?.yellow_cards ?? 0,
+    red_cards: cardTotals?.red_cards ?? 0,
+  });
 }
 
 export function buildStatsFilterOptions(
   rows: TeamEditionStatRow[],
+  yearFilter = "all",
+  seasonFilter = "all",
+  competitionFilter = "all",
 ): TeamStatsFilterOptions {
   const years = new Set<number>();
+  const seasons = new Map<string, string>();
   const competitions = new Map<string, { label: string; logoUrl: string | null }>();
+  const editions: { id: string; label: string }[] = [];
 
   for (const row of rows) {
     const y = getYearValue(row);
+    if (yearFilter !== "all") {
+      if (y == null || String(y) !== yearFilter) continue;
+    }
+    if (seasonFilter !== "all" && getSeasonId(row) !== seasonFilter) continue;
+    if (competitionFilter !== "all" && getCompetitionId(row) !== competitionFilter) {
+      continue;
+    }
     if (y != null) years.add(y);
+    const seasonId = getSeasonId(row);
+    const seasonName = getSeasonName(row);
+    if (seasonId && seasonName) seasons.set(seasonId, seasonName);
     const compId = getCompetitionId(row);
     const comp = row.competition_editions?.competitions;
     if (compId && comp) {
@@ -126,13 +177,36 @@ export function buildStatsFilterOptions(
         logoUrl: comp.logo_url ?? null,
       });
     }
+    editions.push({
+      id: row.edition_id,
+      label: teamEditionEnrollmentLabel(row),
+    });
   }
+
+  const seasonOptions = [...seasons.entries()]
+    .filter(([id]) => {
+      if (yearFilter === "all") return true;
+      return rows.some(
+        (r) =>
+          getSeasonId(r) === id &&
+          getYearValue(r) != null &&
+          String(getYearValue(r)) === yearFilter,
+      );
+    })
+    .map(([id, label]) => ({ id, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+
+  const uniqueEditions = [...new Map(editions.map((e) => [e.id, e])).values()].sort(
+    (a, b) => a.label.localeCompare(b.label, "pt-BR"),
+  );
 
   return {
     years: [...years]
       .sort((a, b) => b - a)
       .map((y) => ({ id: String(y), label: String(y) })),
+    seasons: seasonOptions,
     competitions: [...competitions.entries()].map(([id, v]) => ({ id, ...v })),
+    editions: uniqueEditions,
   };
 }
 
@@ -145,11 +219,36 @@ export function filterEditionStats(
       const y = getYearValue(row);
       if (y == null || String(y) !== filters.year) return false;
     }
+    if (filters.seasonId !== "all") {
+      if (getSeasonId(row) !== filters.seasonId) return false;
+    }
     if (filters.competitionId !== "all") {
       if (getCompetitionId(row) !== filters.competitionId) return false;
     }
     return true;
   });
+}
+
+export function sortStatsSliceRows<T extends { summary: TeamStatsNumericSlice; competitions: TeamEditionStatRow[] }>(
+  groups: T[],
+  sortKey: keyof TeamStatsNumericSlice,
+  direction: "asc" | "desc",
+): T[] {
+  const dir = direction === "asc" ? 1 : -1;
+  return [...groups]
+    .map((g) => ({
+      ...g,
+      competitions: [...g.competitions].sort((a, b) => {
+        const av = sliceFromEditionRow(a)[sortKey] as number;
+        const bv = sliceFromEditionRow(b)[sortKey] as number;
+        return (av - bv) * dir;
+      }),
+    }))
+    .sort((a, b) => {
+      const av = a.summary[sortKey] as number;
+      const bv = b.summary[sortKey] as number;
+      return (av - bv) * dir;
+    });
 }
 
 function sortCompetitionRows(rows: TeamEditionStatRow[]): TeamEditionStatRow[] {

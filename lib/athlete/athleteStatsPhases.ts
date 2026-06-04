@@ -154,6 +154,9 @@ type PhaseMatchBucket = {
   edition_id: string;
   team_id: string | null;
   matches_played: number;
+  wins: number;
+  draws: number;
+  losses: number;
   goals: number;
   assists: number;
   yellow_cards: number;
@@ -226,6 +229,9 @@ export function buildEditionStatsFromPhaseMatches(
         edition_id: editionId,
         team_id: teamId ?? null,
         matches_played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
         goals: 0,
         assists: 0,
         yellow_cards: 0,
@@ -255,11 +261,13 @@ export function buildEditionStatsFromPhaseMatches(
     }
 
     bucket.matches_played += 1;
+    const outcome = matchOutcomeForTeam(match, teamId ?? null);
+    if (outcome === "win") bucket.wins += 1;
+    else if (outcome === "draw") bucket.draws += 1;
+    else if (outcome === "loss") bucket.losses += 1;
+
     if (profileKind === "staff") {
-      const outcome = matchOutcomeForTeam(match, teamId ?? null);
-      if (outcome === "win") bucket.goals += 1;
-      else if (outcome === "draw") bucket.assists += 1;
-      else if (outcome === "loss") bucket.motm_count += 1;
+      /* W/D/L já contados acima; staff não usa gols/assistências na tabela. */
     } else {
       const counts = countFromActions(entry.actions);
       bucket.goals += counts.goals;
@@ -286,9 +294,9 @@ export function buildEditionStatsFromPhaseMatches(
       edition_id: bucket.edition_id,
       team_id: bucket.team_id ?? canonicalTeamForEdition(bucket.edition_id),
       matches_played: bucket.matches_played,
-      wins: bucket.goals,
-      draws: bucket.assists,
-      losses: bucket.motm_count,
+      wins: bucket.wins,
+      draws: bucket.draws,
+      losses: bucket.losses,
       goals: bucket.goals,
       assists: bucket.assists,
       yellow_cards: bucket.yellow_cards,

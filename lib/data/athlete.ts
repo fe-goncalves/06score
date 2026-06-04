@@ -114,7 +114,7 @@ export async function getAthleteProfile(
     supabase
       .from("athlete_career_stats")
       .select(
-        "total_matches, total_goals, total_assists, total_yellow_cards, total_red_cards, total_motm, total_totw, total_motw, total_hat_tricks, total_pokers, total_mvp, total_top_scorer, total_top_assists, total_best_goalkeeper, total_penalties_scored, total_penalties_taken, total_shootouts_scored, total_shootouts_taken, avg_rating, total_ratings_count",
+        "total_matches, total_wins, total_draws, total_losses, total_goals, total_assists, total_yellow_cards, total_red_cards, total_motm, total_totw, total_motw, total_hat_tricks, total_pokers, total_mvp, total_top_scorer, total_top_assists, total_best_goalkeeper, total_penalties_scored, total_penalties_taken, total_shootouts_scored, total_shootouts_taken, avg_rating, total_ratings_count",
       )
       .eq("athlete_id", athleteId)
       .eq("organization_id", orgId)
@@ -374,7 +374,7 @@ export async function getAthleteProfile(
     });
   }
 
-  let rosterEntries = await enrichAthleteRosterEntries(
+  const rosterEntries = await enrichAthleteRosterEntries(
     (rosterEntriesResult.data ?? []) as {
       id: string;
       edition_team_id?: string | null;

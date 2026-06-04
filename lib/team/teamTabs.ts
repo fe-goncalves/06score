@@ -1,29 +1,31 @@
 import type { TabItem } from "@/components/ui/PageTabs";
 
+export const TEAM_TAB_ELENCO = "elenco";
 export const TEAM_TAB_PARTIDAS = "partidas";
+export const TEAM_TAB_DETALHES = "detalhes";
 
-export const TEAM_TABS_DESKTOP: TabItem[] = [
-  { id: "informacoes", label: "INFORMAÇÕES" },
-  { id: "historico", label: "HISTÓRICO" },
+export const TEAM_TABS: TabItem[] = [
+  { id: TEAM_TAB_ELENCO, label: "ELENCO ATUAL" },
   { id: "estatisticas", label: "ESTATÍSTICAS" },
-];
-
-export const TEAM_TABS_MOBILE: TabItem[] = [
-  ...TEAM_TABS_DESKTOP.slice(0, 1),
   { id: TEAM_TAB_PARTIDAS, label: "PARTIDAS" },
-  ...TEAM_TABS_DESKTOP.slice(1),
+  { id: "historico", label: "HISTÓRICO" },
+  { id: TEAM_TAB_DETALHES, label: "DETALHES" },
 ];
 
-export const DEFAULT_TEAM_TAB = "informacoes";
+export const DEFAULT_TEAM_TAB = TEAM_TAB_ELENCO;
 
-const DESKTOP_IDS = new Set(TEAM_TABS_DESKTOP.map((t) => t.id));
-const MOBILE_IDS = new Set(TEAM_TABS_MOBILE.map((t) => t.id));
+const TAB_IDS = new Set(TEAM_TABS.map((t) => t.id));
 
-export function resolveTeamTab(tab: string, isMobile = false): string {
-  const allowed = isMobile ? MOBILE_IDS : DESKTOP_IDS;
-  return allowed.has(tab) ? tab : DEFAULT_TEAM_TAB;
+/** URLs antigas com `tab=informacoes`. */
+const LEGACY_TAB_ALIASES: Record<string, string> = {
+  informacoes: TEAM_TAB_DETALHES,
+};
+
+export function resolveTeamTab(tab: string): string {
+  const normalized = LEGACY_TAB_ALIASES[tab] ?? tab;
+  return TAB_IDS.has(normalized) ? normalized : DEFAULT_TEAM_TAB;
 }
 
-export function teamTabsForViewport(isMobile: boolean): TabItem[] {
-  return isMobile ? TEAM_TABS_MOBILE : TEAM_TABS_DESKTOP;
+export function teamTabsForViewport(): TabItem[] {
+  return TEAM_TABS;
 }

@@ -32,7 +32,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
   if (!profile) notFound();
 
   return (
-    <div className="page-container athlete-page-wrap pb-6 pt-0">
+    <div className="page-container athlete-page-wrap team-profile-wrap pb-6 pt-0">
       <TeamPageClient profile={profile} />
     </div>
   );

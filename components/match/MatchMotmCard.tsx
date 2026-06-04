@@ -2,7 +2,11 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { MatchRatingBadge } from "@/components/match/MatchRatingBadge";
 import { OrgImage } from "@/components/ui/OrgImage";
-import { motmTeamLabel, resolveMotmRating } from "@/lib/match/motm";
+import {
+  motmTeamLabel,
+  resolveMotmRating,
+  resolveMotmTeam,
+} from "@/lib/match/motm";
 import type {
   Match,
   MatchAthleteRating,
@@ -37,15 +41,11 @@ export function MatchMotmCard({
   const athlete = match.motm_athlete;
   if (!athleteId || !athlete) return null;
 
-  const team =
-    match.motm_team ??
-    lineups.find((l) => l.athlete_id === athleteId)?.edition_teams?.teams ??
-    null;
-
+  const team = resolveMotmTeam(athleteId, match, lineups, ratings);
   const rating = resolveMotmRating(athleteId, ratings, lineups);
   const displayName = athleteSurnameLabel(athlete.full_name, athlete.surname);
   const teamName = team ? motmTeamLabel(team) : null;
-  const teamId = team?.id ?? match.motm_team_id ?? null;
+  const teamId = team?.id ?? null;
   const accent = accentColor ?? "var(--color-brand)";
 
   return (

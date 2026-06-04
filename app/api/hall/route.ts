@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHallData } from "@/lib/data/hall";
-import type { HallFilters } from "@/lib/types";
+import type { HallEntityTab, HallFilters, HallGender } from "@/lib/types";
+
+function parseGender(value: string | null): HallGender | "" {
+  const g = (value ?? "").trim().toLowerCase();
+  if (g === "male" || g === "m") return "male";
+  if (g === "female" || g === "f") return "female";
+  if (g === "all") return "all";
+  return "";
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
 
   const orgId = searchParams.get("orgId") ?? "";
+  const tab = (searchParams.get("tab") ?? "all") as HallEntityTab | "all";
+
   const filters: HallFilters = {
     competitionId: searchParams.get("competitionId") ?? "",
     editionId: searchParams.get("editionId") ?? "",
-    teamId: searchParams.get("teamId") ?? "",
-    gender: searchParams.get("gender") ?? "",
+    year: searchParams.get("year") ?? "",
+    gender: parseGender(searchParams.get("gender")) || "all",
   };
 
   if (!orgId) {
@@ -18,7 +28,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const data = await getHallData(orgId, filters);
+    const data = await getHallData(orgId, filters, tab);
     return NextResponse.json(data);
   } catch (err) {
     console.error("[/api/hall]", err);

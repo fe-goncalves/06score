@@ -1,297 +1,328 @@
 "use client";
 
-import {
-  Fragment,
-  useMemo,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { OrgImage } from "@/components/ui/OrgImage";
 import { AthleteHubFilter } from "@/components/athlete/AthleteHubFilter";
-import { OrgLogo } from "@/components/ui/OrgLogo";
-import { TEAM_STATS_COLUMNS } from "@/lib/team/statsConfig";
 import {
-  buildCareerTotalsRow,
-  buildStatsFilterOptions,
-  buildTotalsFromEditionRows,
-  filterEditionStats,
-  groupEditionStatsBySeason,
-  hasActiveStatsFilters,
-  sliceFromEditionRow,
-  type TeamStatsFilterState,
-  type TeamStatsNumericSlice,
-} from "@/lib/team/teamStatsDisplay";
-import type { Team, TeamCareerSummary, TeamEditionStatRow } from "@/lib/types";
+  SortableStatTh,
+  StatsTablePager,
+  toggleSortDirection,
+} from "@/components/team/StatsTableControls";
+import {
+  fetchTeamAthleteStats,
+  sortTeamAthleteRows,
+  type TeamAthleteStatsScope,
+  type TeamAthleteStatRow,
+} from "@/lib/team/fetchTeamAthleteStats";
+import { phaseIdsForPhaseFilter, phaseFilterOptions } from "@/lib/team/phaseFilter";
+import {
+  TEAM_ATHLETE_STATS_COLUMNS,
+  TEAM_ATHLETE_STATS_PAGE_SIZE,
+  type TeamAthleteStatSortKey,
+  type TeamAthleteStatsColumnDef,
+} from "@/lib/team/statsConfig";
+import { buildStatsFilterOptions } from "@/lib/team/teamStatsDisplay";
+import type {
+  Athlete,
+  AthleteStatsPhaseRecord,
+  Team,
+  TeamEditionStatRow,
+} from "@/lib/types";
+import { athleteSurnameLabel } from "@/lib/utils";
 
 interface TeamEstatisticasTabProps {
-  editionStats: TeamEditionStatRow[];
-  careerSummary: TeamCareerSummary;
   team: Team & { id: string };
+  squad: (Athlete & { id: string })[];
+  editionStats: TeamEditionStatRow[];
+  statsPhases: AthleteStatsPhaseRecord[];
 }
 
-function StatsNumericCells({ row }: { row: TeamStatsNumericSlice }) {
-  return (
-    <>
-      <td className="athlete-stats-num">{row.matches_played}</td>
-      <td className="athlete-stats-num">{row.wins}</td>
-      <td className="athlete-stats-num">{row.draws}</td>
-      <td className="athlete-stats-num">{row.losses}</td>
-      <td className="athlete-stats-num">{row.goals_scored}</td>
-      <td className="athlete-stats-num">{row.goals_conceded}</td>
-      <td className="athlete-stats-num athlete-stats-num--pts">{row.points}</td>
-    </>
-  );
+function statsColClass(col: TeamAthleteStatsColumnDef): string {
+  return col.mobileHidden
+    ? "athlete-stats-col-num athlete-stats-col--desktop-only"
+    : "athlete-stats-col-num athlete-stats-col-num--visible";
 }
 
-interface StatsDataRowProps {
-  variant: "total" | "season" | "competition";
-  label: ReactNode;
-  teamLogoUrl: string | null | undefined;
-  stats: TeamStatsNumericSlice;
-  indent?: boolean;
-  expanded?: boolean;
-  interactive?: boolean;
-  onActivate?: () => void;
+function statsCellClass(col: TeamAthleteStatsColumnDef): string {
+  return col.mobileHidden
+    ? "athlete-stats-num athlete-stats-col--desktop-only"
+    : "athlete-stats-num athlete-stats-num--visible";
 }
 
-function StatsDataRow({
-  variant,
-  label,
-  teamLogoUrl,
-  stats,
-  indent = false,
-  expanded = false,
-  interactive = false,
-  onActivate,
-}: StatsDataRowProps) {
-  const rowClass = [
-    "athlete-stats-row",
-    `athlete-stats-row--${variant}`,
-    expanded ? "athlete-stats-row--expanded" : "",
-    interactive ? "athlete-stats-row--interactive" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+function statsHeaderClass(col: TeamAthleteStatsColumnDef): string {
+  return col.mobileHidden ? "athlete-stats-col--desktop-only" : "";
+}
 
-  const sharedProps = interactive
-    ? {
-        onClick: onActivate,
-        onKeyDown: (e: KeyboardEvent) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onActivate?.();
-          }
-        },
-        tabIndex: 0,
-        role: "button" as const,
-        "aria-expanded": expanded,
-      }
-    : {};
-
-  return (
-    <tr className={rowClass} {...sharedProps}>
-      <td
-        className={[
-          "athlete-stats-label",
-          indent ? "athlete-stats-label--child" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      >
-        {label}
-      </td>
-      <td className="athlete-stats-team">
-        <OrgLogo src={teamLogoUrl} size={22} className="athlete-stats-team-logo" />
-      </td>
-      <StatsNumericCells row={stats} />
-    </tr>
-  );
+function statValue(row: TeamAthleteStatRow, sortKey: TeamAthleteStatSortKey): number {
+  return row[sortKey];
 }
 
 export function TeamEstatisticasTab({
-  editionStats,
-  careerSummary,
   team,
+  squad,
+  editionStats,
+  statsPhases,
 }: TeamEstatisticasTabProps) {
+  const [scope, setScope] = useState<TeamAthleteStatsScope>("current");
   const [year, setYear] = useState("all");
+  const [seasonId, setSeasonId] = useState("all");
   const [competitionId, setCompetitionId] = useState("all");
-  const [expandedSeason, setExpandedSeason] = useState<string | null>(null);
+  const [phaseKey, setPhaseKey] = useState("all");
+  const [sortKey, setSortKey] = useState<TeamAthleteStatSortKey>("goals");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(0);
+  const [rows, setRows] = useState<Awaited<ReturnType<typeof fetchTeamAthleteStats>>>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filterOptions = useMemo(
-    () => buildStatsFilterOptions(editionStats),
+  const squadIds = useMemo(() => squad.map((a) => a.id), [squad]);
+
+  const teamEditionIds = useMemo(
+    () => editionStats.map((row) => row.edition_id),
     [editionStats],
   );
 
-  const filters: TeamStatsFilterState = useMemo(
-    () => ({ year, competitionId }),
-    [year, competitionId],
+  const filterOptions = useMemo(
+    () => buildStatsFilterOptions(editionStats, year, seasonId, competitionId),
+    [editionStats, year, seasonId, competitionId],
   );
 
-  const tableEditionStats = useMemo(
-    () => filterEditionStats(editionStats, filters),
-    [editionStats, filters],
+  const phaseOptions = useMemo(
+    () => phaseFilterOptions(statsPhases, competitionId),
+    [statsPhases, competitionId],
   );
 
-  const seasonGroups = useMemo(
-    () => groupEditionStatsBySeason(tableEditionStats, team.logo_url ?? null),
-    [tableEditionStats, team.logo_url],
+  const phaseIdsInFilter = useMemo(
+    () => phaseIdsForPhaseFilter(statsPhases, competitionId, phaseKey),
+    [statsPhases, competitionId, phaseKey],
   );
 
-  const filtersActive = hasActiveStatsFilters(filters);
+  const showSeasonFilter = year !== "all";
+  const showPhaseFilter = competitionId !== "all";
 
-  const totalsRow = useMemo(() => {
-    if (!filtersActive) return buildCareerTotalsRow(careerSummary);
-    return buildTotalsFromEditionRows(tableEditionStats);
-  }, [filtersActive, careerSummary, tableEditionStats]);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchTeamAthleteStats(
+      team.id,
+      scope,
+      squadIds,
+      {
+        year,
+        seasonId,
+        competitionId,
+        phaseIds: phaseIdsInFilter,
+      },
+      teamEditionIds,
+    ).then((data) => {
+      if (!cancelled) {
+        setRows(data);
+        setLoading(false);
+        setPage(0);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    team.id,
+    scope,
+    squadIds,
+    year,
+    seasonId,
+    competitionId,
+    phaseIdsInFilter,
+    teamEditionIds,
+  ]);
 
-  const flatSeasonRows = competitionId !== "all";
+  const sortedRows = useMemo(
+    () => sortTeamAthleteRows(rows, sortKey, sortDir),
+    [rows, sortKey, sortDir],
+  );
 
-  const toggleSeason = (key: string) => {
-    setExpandedSeason((prev) => (prev === key ? null : key));
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / TEAM_ATHLETE_STATS_PAGE_SIZE));
+
+  const pageRows = useMemo(() => {
+    const start = page * TEAM_ATHLETE_STATS_PAGE_SIZE;
+    return sortedRows.slice(start, start + TEAM_ATHLETE_STATS_PAGE_SIZE);
+  }, [sortedRows, page]);
+
+  const handleSort = (key: string) => {
+    const k = key as TeamAthleteStatSortKey;
+    setSortDir(toggleSortDirection(sortKey, k, sortDir));
+    setSortKey(k);
+    setPage(0);
   };
 
   return (
     <div className="athlete-estatisticas-tab space-y-3">
       <section className="athlete-historico-block athlete-stats-section">
-        <div className="athlete-stats-filters athlete-stats-filters--team">
+        <div className="athlete-awards-head team-stats-scope-head">
+          <div
+            className="athlete-awards-switch"
+            role="tablist"
+            aria-label="Escopo das estatísticas"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={scope === "current"}
+              className={`athlete-awards-switch-btn ${scope === "current" ? "athlete-awards-switch-btn--active" : ""}`}
+              onClick={() => setScope("current")}
+            >
+              Elenco atual
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={scope === "all"}
+              className={`athlete-awards-switch-btn ${scope === "all" ? "athlete-awards-switch-btn--active" : ""}`}
+              onClick={() => setScope("all")}
+            >
+              Toda história
+            </button>
+          </div>
+        </div>
+
+        <div
+          className={`athlete-stats-filters athlete-stats-filters--inline ${showPhaseFilter ? "athlete-stats-filters--with-phase" : ""}`}
+        >
           <AthleteHubFilter
             ariaLabel="Filtrar por ano"
             value={year}
             onChange={(id) => {
               setYear(id);
-              setExpandedSeason(null);
+              setSeasonId("all");
+              setCompetitionId("all");
+              setPhaseKey("all");
             }}
             options={filterOptions.years}
             allLabel="Todos os anos"
             showLogo={false}
           />
+          {showSeasonFilter ? (
+            <AthleteHubFilter
+              ariaLabel="Filtrar por temporada"
+              value={seasonId}
+              onChange={(id) => {
+              setSeasonId(id);
+            }}
+              options={filterOptions.seasons}
+              allLabel="Todas as temporadas"
+              showLogo={false}
+            />
+          ) : null}
           <AthleteHubFilter
             ariaLabel="Filtrar por competição"
             value={competitionId}
             onChange={(id) => {
               setCompetitionId(id);
-              setExpandedSeason(null);
+              setPhaseKey("all");
             }}
             options={filterOptions.competitions}
             allLabel="Todas"
             showLogo
           />
+          {showPhaseFilter ? (
+            <AthleteHubFilter
+              ariaLabel="Filtrar por fase"
+              value={phaseKey}
+              onChange={setPhaseKey}
+              options={phaseOptions}
+              allLabel="Todas as fases"
+              showLogo={false}
+            />
+          ) : null}
         </div>
 
         <div className="athlete-stats-table-wrap">
-          <table className="athlete-stats-table">
+          <table className="athlete-stats-table team-athlete-stats-table">
             <colgroup>
               <col className="athlete-stats-col-label" />
-              <col className="athlete-stats-col-team" />
-              <col className="athlete-stats-col-num" span={7} />
+              {TEAM_ATHLETE_STATS_COLUMNS.map((col) => (
+                <col key={col.sortKey} className={statsColClass(col)} />
+              ))}
             </colgroup>
             <thead>
               <tr>
                 <th scope="col" className="athlete-stats-th-label">
-                  Temporada
+                  Atleta
                 </th>
-                <th scope="col" className="athlete-stats-th-team">
-                  Comp.
-                </th>
-                {TEAM_STATS_COLUMNS.map((col) => (
-                  <th key={col.abbr} scope="col">
-                    {col.abbr}
-                  </th>
+                {TEAM_ATHLETE_STATS_COLUMNS.map((col) => (
+                  <SortableStatTh
+                    key={col.abbr}
+                    abbr={col.abbr}
+                    sortKey={col.sortKey}
+                    activeSortKey={sortKey}
+                    direction={sortDir}
+                    onSort={handleSort}
+                    className={statsHeaderClass(col)}
+                  />
                 ))}
               </tr>
             </thead>
             <tbody>
-              <StatsDataRow
-                variant="total"
-                label={<span className="athlete-stats-total-label">TOTAL</span>}
-                teamLogoUrl={team.logo_url}
-                stats={totalsRow}
-              />
-
-              {seasonGroups.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan={9} className="athlete-stats-empty">
-                    Nenhum dado para os filtros selecionados.
+                  <td colSpan={11} className="athlete-stats-empty">
+                    Carregando estatísticas…
+                  </td>
+                </tr>
+              ) : pageRows.length === 0 ? (
+                <tr>
+                  <td colSpan={11} className="athlete-stats-empty">
+                    Nenhuma estatística para este escopo.
                   </td>
                 </tr>
               ) : (
-                seasonGroups.map((group) => {
-                  if (flatSeasonRows) {
-                    return (
-                      <StatsDataRow
-                        key={group.key}
-                        variant="season"
-                        teamLogoUrl={group.teamLogoUrl}
-                        stats={group.summary}
-                        label={
-                          <span className="athlete-stats-season-name">{group.seasonName}</span>
-                        }
-                      />
-                    );
-                  }
-
-                  const expanded = expandedSeason === group.key;
-
-                  return (
-                    <Fragment key={group.key}>
-                      <StatsDataRow
-                        variant="season"
-                        interactive
-                        expanded={expanded}
-                        onActivate={() => toggleSeason(group.key)}
-                        teamLogoUrl={group.teamLogoUrl}
-                        stats={group.summary}
-                        label={
-                          <span className="athlete-stats-season-inner">
-                            <span className="athlete-stats-chevron" aria-hidden>
-                              {expanded ? "▾" : "▸"}
-                            </span>
-                            <span className="athlete-stats-season-name">{group.seasonName}</span>
-                          </span>
-                        }
-                      />
-
-                      {expanded &&
-                        group.competitions.map((row) => {
-                          const comp = row.competition_editions?.competitions;
-                          const compLabel =
-                            comp?.short_name?.trim() ||
-                            comp?.full_name?.trim() ||
-                            "Competição";
-
-                          return (
-                            <StatsDataRow
-                              key={`${row.edition_id}`}
-                              variant="competition"
-                              indent
-                              teamLogoUrl={comp?.logo_url}
-                              stats={sliceFromEditionRow(row)}
-                              label={
-                                <span className="athlete-stats-comp-inner">
-                                  <OrgLogo
-                                    src={comp?.logo_url}
-                                    size={18}
-                                    className="athlete-stats-comp-logo"
-                                  />
-                                  <span className="athlete-stats-comp-name">{compLabel}</span>
-                                </span>
-                              }
-                            />
-                          );
-                        })}
-                    </Fragment>
-                  );
-                })
+                pageRows.map((row) => (
+                  <tr key={row.athlete.id} className="athlete-stats-row">
+                    <td className="athlete-stats-label">
+                      <Link
+                        href={`/atletas/${row.athlete.id}`}
+                        className="team-athlete-stats-name-link"
+                      >
+                        <OrgImage
+                          src={row.athlete.photo_url}
+                          alt=""
+                          width={28}
+                          height={28}
+                          className="team-athlete-stats-photo"
+                        />
+                        <span>
+                          {athleteSurnameLabel(
+                            row.athlete.full_name,
+                            row.athlete.surname,
+                          )}
+                        </span>
+                      </Link>
+                    </td>
+                    {TEAM_ATHLETE_STATS_COLUMNS.map((col) => (
+                      <td key={col.sortKey} className={statsCellClass(col)}>
+                        {statValue(row, col.sortKey)}
+                      </td>
+                    ))}
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
 
+        <StatsTablePager
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
+
         <div className="athlete-stats-legend">
           <p className="athlete-stats-legend-title">Legenda</p>
           <ul className="athlete-stats-legend-list">
-            {TEAM_STATS_COLUMNS.map(({ abbr, label }) => (
-              <li key={abbr}>
+            {TEAM_ATHLETE_STATS_COLUMNS.map(({ abbr, label, mobileHidden }) => (
+              <li
+                key={abbr}
+                className={mobileHidden ? "athlete-stats-col--desktop-only" : undefined}
+              >
                 <span className="athlete-stats-legend-abbr">{abbr}</span>
                 <span className="athlete-stats-legend-desc">{label}</span>
               </li>

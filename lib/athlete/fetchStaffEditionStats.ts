@@ -87,9 +87,6 @@ function normalizeEditionStatRow(raw: RawStat): AthleteEditionStatRow | null {
         full_name: String(competitionsRaw.full_name ?? ""),
         short_name: (competitionsRaw.short_name as string | null) ?? null,
         logo_url: (competitionsRaw.logo_url as string | null) ?? null,
-        primary_color: null,
-        sport_slug: null,
-        gender: null,
       }
     : null;
 
@@ -220,9 +217,6 @@ async function fetchStaffEditionStatsFallback(
                 full_name: String(compRaw.full_name ?? ""),
                 short_name: (compRaw.short_name as string | null) ?? null,
                 logo_url: (compRaw.logo_url as string | null) ?? null,
-                primary_color: null,
-                sport_slug: null,
-                gender: null,
               }
             : null,
         },

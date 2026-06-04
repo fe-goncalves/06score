@@ -5,6 +5,9 @@ const EDITION_STATS_JOINED_SELECT = `
   edition_id,
   team_id,
   matches_played,
+  wins,
+  draws,
+  losses,
   goals,
   assists,
   yellow_cards,
@@ -107,6 +110,9 @@ function normalizeEditionStatRow(raw: RawStat): AthleteEditionStatRow | null {
     edition_id: editionId,
     team_id: (raw.team_id as string | null) ?? null,
     matches_played: num(raw.matches_played),
+    wins: num(raw.wins),
+    draws: num(raw.draws),
+    losses: num(raw.losses),
     goals: num(raw.goals),
     assists: num(raw.assists),
     yellow_cards: num(raw.yellow_cards),
@@ -142,7 +148,7 @@ async function fetchAthleteEditionStatsFallback(
   const { data: stats, error: statsError } = await supabase
     .from("athlete_edition_stats")
     .select(
-      `edition_id, team_id, matches_played, goals, assists, yellow_cards, red_cards, motm_count, totw_count, motw_count, avg_rating, penalties_taken, penalties_scored, shootouts_taken, shootouts_scored, goals_conceded, penalty_saves`,
+      `edition_id, team_id, matches_played, wins, draws, losses, goals, assists, yellow_cards, red_cards, motm_count, totw_count, motw_count, avg_rating, penalties_taken, penalties_scored, shootouts_taken, shootouts_scored, goals_conceded, penalty_saves`,
     )
     .eq("athlete_id", athleteId);
 

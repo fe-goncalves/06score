@@ -55,12 +55,16 @@ function attachEditionTeamsToLineups(
   }));
 }
 
-function collectEditionTeamIds(lineups: RawMatchLineup[]): string[] {
+function collectEditionTeamIds(
+  lineups: RawMatchLineup[],
+  ratings: { edition_team_id?: string | null }[],
+): string[] {
   return [
     ...new Set(
-      lineups
-        .map((row) => row.edition_team_id)
-        .filter((id): id is string => Boolean(id)),
+      [
+        ...lineups.map((row) => row.edition_team_id),
+        ...ratings.map((r) => r.edition_team_id),
+      ].filter((id): id is string => Boolean(id)),
     ),
   ];
 }
@@ -157,9 +161,11 @@ export async function getMatchDetail(
   }
 
   const rawLineups = (lineupsResult.data as RawMatchLineup[] | null) ?? [];
+  const ratings =
+    (ratingsResult.data as MatchAthleteRating[] | null) ?? [];
 
   const editionTeamsMap = await fetchEditionTeamsByIds(
-    collectEditionTeamIds(rawLineups),
+    collectEditionTeamIds(rawLineups, ratings),
   );
 
   const lineups = attachEditionTeamsToLineups(rawLineups, editionTeamsMap);
@@ -173,7 +179,7 @@ export async function getMatchDetail(
     match: m,
     lineups,
     staffLineups,
-    ratings: (ratingsResult.data as MatchAthleteRating[] | null) ?? [],
+    ratings,
     actions,
     teamAId,
     teamBId,

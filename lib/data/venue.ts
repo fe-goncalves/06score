@@ -48,7 +48,7 @@ async function fetchVenueRecord(
     return null;
   }
 
-  if (data) return data as OrgVenue;
+  if (data) return data as unknown as OrgVenue;
 
   const { data: byId, error: byIdError } = await trySelect(VENUE_MINIMAL_SELECT, false);
   if (byIdError) {
@@ -56,7 +56,7 @@ async function fetchVenueRecord(
     return null;
   }
 
-  return (byId as OrgVenue | null) ?? null;
+  return (byId as unknown as OrgVenue | null) ?? null;
 }
 
 async function fetchVenueMatches(
@@ -89,7 +89,7 @@ async function fetchVenueMatches(
 
   const primary = await run(true);
   if (!primary.error) {
-    return (primary.data as Match[] | null) ?? [];
+    return (primary.data as unknown as Match[] | null) ?? [];
   }
 
   console.error("[getVenueProfile:matches]", primary.error.message);
@@ -100,7 +100,7 @@ async function fetchVenueMatches(
     return [];
   }
 
-  return (fallback.data as Match[] | null) ?? [];
+  return (fallback.data as unknown as Match[] | null) ?? [];
 }
 
 function venueFromEmbed(

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { OrgLogo } from "@/components/ui/OrgLogo";
+import { useFilterMenuPosition } from "@/lib/hooks/useFilterMenuPosition";
 
 export interface HubFilterOption {
   id: string;
@@ -33,6 +34,7 @@ export function AthleteHubFilter({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
+  const menuStyle = useFilterMenuPosition(open, rootRef);
 
   const selected =
     value === "all"
@@ -101,7 +103,12 @@ export function AthleteHubFilter({
         </button>
 
         {open && (
-          <ul id={listId} className="athlete-comp-filter-menu" role="listbox">
+          <ul
+            id={listId}
+            className="athlete-comp-filter-menu athlete-comp-filter-menu--floating"
+            style={menuStyle}
+            role="listbox"
+          >
             <li role="option" aria-selected={value === "all"}>
               <button
                 type="button"

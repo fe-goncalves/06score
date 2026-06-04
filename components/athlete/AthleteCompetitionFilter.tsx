@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { useFilterMenuPosition } from "@/lib/hooks/useFilterMenuPosition";
 
 export interface CompetitionFilterOption {
   id: string;
@@ -12,20 +13,25 @@ interface AthleteCompetitionFilterProps {
   value: string;
   options: CompetitionFilterOption[];
   onChange: (id: string) => void;
+  allLabel?: string;
+  showLogo?: boolean;
 }
 
 export function AthleteCompetitionFilter({
   value,
   options,
   onChange,
+  allLabel = "Todas as competições",
+  showLogo = true,
 }: AthleteCompetitionFilterProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
+  const menuStyle = useFilterMenuPosition(open, rootRef);
 
   const selected =
     value === "all"
-      ? { id: "all", label: "Todas as competições", logoUrl: null }
+      ? { id: "all", label: allLabel, logoUrl: null }
       : options.find((o) => o.id === value) ?? {
           id: value,
           label: "Competição",
@@ -67,15 +73,17 @@ export function AthleteCompetitionFilter({
         onClick={() => setOpen((v) => !v)}
       >
         <span className="athlete-comp-filter-trigger-inner">
-          {selected.logoUrl ? (
-            <img
-              src={selected.logoUrl}
-              alt=""
-              className="athlete-comp-filter-logo"
-            />
-          ) : (
-            <span className="athlete-comp-filter-logo athlete-comp-filter-logo--ph" />
-          )}
+          {showLogo ? (
+            selected.logoUrl ? (
+              <img
+                src={selected.logoUrl}
+                alt=""
+                className="athlete-comp-filter-logo"
+              />
+            ) : (
+              <span className="athlete-comp-filter-logo athlete-comp-filter-logo--ph" />
+            )
+          ) : null}
           <span className="athlete-comp-filter-label">{selected.label}</span>
         </span>
         <span className="athlete-comp-filter-chevron" aria-hidden>
@@ -84,16 +92,19 @@ export function AthleteCompetitionFilter({
       </button>
 
       {open && (
-        <ul id={listId} className="athlete-comp-filter-menu" role="listbox">
+        <ul
+          id={listId}
+          className="athlete-comp-filter-menu athlete-comp-filter-menu--floating"
+          style={menuStyle}
+          role="listbox"
+        >
           <li role="option" aria-selected={value === "all"}>
             <button
               type="button"
               className={`athlete-comp-filter-option ${value === "all" ? "athlete-comp-filter-option--active" : ""}`}
               onClick={() => pick("all")}
             >
-              <span className="athlete-comp-filter-option-label">
-                Todas as competições
-              </span>
+              <span className="athlete-comp-filter-option-label">{allLabel}</span>
             </button>
           </li>
           {options.map((opt) => (
@@ -103,15 +114,17 @@ export function AthleteCompetitionFilter({
                 className={`athlete-comp-filter-option ${value === opt.id ? "athlete-comp-filter-option--active" : ""}`}
                 onClick={() => pick(opt.id)}
               >
-                {opt.logoUrl ? (
-                  <img
-                    src={opt.logoUrl}
-                    alt=""
-                    className="athlete-comp-filter-logo"
-                  />
-                ) : (
-                  <span className="athlete-comp-filter-logo athlete-comp-filter-logo--ph" />
-                )}
+                {showLogo ? (
+                  opt.logoUrl ? (
+                    <img
+                      src={opt.logoUrl}
+                      alt=""
+                      className="athlete-comp-filter-logo"
+                    />
+                  ) : (
+                    <span className="athlete-comp-filter-logo athlete-comp-filter-logo--ph" />
+                  )
+                ) : null}
                 <span className="athlete-comp-filter-option-label">
                   {opt.label}
                 </span>

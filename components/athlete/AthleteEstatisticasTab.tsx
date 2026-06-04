@@ -26,9 +26,12 @@ import {
   buildEditionStatsFromPhaseMatches,
   groupPhasesForCompetition,
 } from "@/lib/athlete/athleteStatsPhases";
+import { formatRate } from "@/lib/athlete/statsRates";
 import {
   statsColumnsForKind,
   type HubProfileKind,
+  type StatsColumnDef,
+  type StatsColumnKey,
 } from "@/lib/athlete/statsConfig";
 import type { AthleteEditionStatRow, AthleteProfileData, Team } from "@/lib/types";
 
@@ -52,18 +55,57 @@ function RatingCell({ value }: { value: number | null }) {
   );
 }
 
-function StatsNumericCells({ row }: { row: AthleteStatsNumericSlice }) {
+function renderStatCellValue(
+  key: StatsColumnKey,
+  row: AthleteStatsNumericSlice,
+  profileKind: HubProfileKind,
+  variant: "total" | "season" | "competition",
+): ReactNode {
+  if (key === "avg_rating") {
+    return <RatingCell value={row.avg_rating} />;
+  }
+  if (key === "penalties") {
+    if (
+      profileKind === "athlete" &&
+      variant === "competition" &&
+      row.penalties_taken <= 0
+    ) {
+      return "—";
+    }
+    return formatRate(row.penalties_scored, row.penalties_taken);
+  }
+  if (key === "shootouts") {
+    if (
+      profileKind === "athlete" &&
+      variant === "competition" &&
+      row.shootouts_taken <= 0
+    ) {
+      return "—";
+    }
+    return formatRate(row.shootouts_scored, row.shootouts_taken);
+  }
+  const value = row[key];
+  return typeof value === "number" ? value : "—";
+}
+
+function StatsNumericCells({
+  row,
+  columns,
+  profileKind,
+  variant,
+}: {
+  row: AthleteStatsNumericSlice;
+  columns: StatsColumnDef[];
+  profileKind: HubProfileKind;
+  variant: "total" | "season" | "competition";
+}) {
   return (
     <>
-      <td className="athlete-stats-num">{row.matches_played}</td>
-      <td className="athlete-stats-num">{row.goals}</td>
-      <td className="athlete-stats-num">{row.assists}</td>
-      <td className="athlete-stats-num">{row.yellow_cards}</td>
-      <td className="athlete-stats-num">{row.red_cards}</td>
-      <td className="athlete-stats-num">{row.motm_count}</td>
-      <td className="athlete-stats-num">
-        <RatingCell value={row.avg_rating} />
-      </td>
+      {columns.map((col) => (
+        <td key={col.abbr} className="athlete-stats-num">
+          {renderStatCellValue(col.key, row, profileKind, variant)}
+        </td>
+      ))}
     </>
   );
 }
@@ -73,6 +115,8 @@ interface StatsDataRowProps {
   label: ReactNode;
   teamLogoUrl: string | null | undefined;
   stats: AthleteStatsNumericSlice;
+  columns: StatsColumnDef[];
+  profileKind: HubProfileKind;
   indent?: boolean;
   expanded?: boolean;
   interactive?: boolean;
@@ -84,6 +128,8 @@ function StatsDataRow({
   label,
   teamLogoUrl,
   stats,
+  columns,
+  profileKind,
   indent = false,
   expanded = false,
   interactive = false,
@@ -128,7 +174,12 @@ function StatsDataRow({
       <td className="athlete-stats-team">
         <OrgLogo src={teamLogoUrl} size={22} className="athlete-stats-team-logo" />
       </td>
-      <StatsNumericCells row={stats} />
+      <StatsNumericCells
+        row={stats}
+        columns={columns}
+        profileKind={profileKind}
+        variant={variant}
+      />
     </tr>
   );
 }
@@ -268,7 +319,7 @@ export function AthleteEstatisticasTab({
             <colgroup>
               <col className="athlete-stats-col-label" />
               <col className="athlete-stats-col-team" />
-              <col className="athlete-stats-col-num" span={7} />
+              <col className="athlete-stats-col-num" span={statColumns.length} />
             </colgroup>
             <thead>
               <tr>
@@ -291,11 +342,13 @@ export function AthleteEstatisticasTab({
                 label={<span className="athlete-stats-total-label">TOTAL</span>}
                 teamLogoUrl={currentTeam?.logo_url}
                 stats={totalsRow}
+                columns={statColumns}
+                profileKind={profileKind}
               />
 
               {seasonGroups.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="athlete-stats-empty">
+                  <td colSpan={2 + statColumns.length} className="athlete-stats-empty">
                     Nenhum dado para os filtros selecionados.
                   </td>
                 </tr>
@@ -308,6 +361,8 @@ export function AthleteEstatisticasTab({
                         variant="season"
                         teamLogoUrl={group.teamLogoUrl}
                         stats={group.summary}
+                        columns={statColumns}
+                        profileKind={profileKind}
                         label={
                           <span className="athlete-stats-season-name">{group.seasonName}</span>
                         }
@@ -326,6 +381,8 @@ export function AthleteEstatisticasTab({
                         onActivate={() => toggleSeason(group.key)}
                         teamLogoUrl={group.teamLogoUrl}
                         stats={group.summary}
+                        columns={statColumns}
+                        profileKind={profileKind}
                         label={
                           <span className="athlete-stats-season-inner">
                             <span className="athlete-stats-chevron" aria-hidden>
@@ -351,6 +408,8 @@ export function AthleteEstatisticasTab({
                               indent
                               teamLogoUrl={row.teams?.logo_url}
                               stats={sliceFromEditionRow(row, profileKind)}
+                              columns={statColumns}
+                              profileKind={profileKind}
                               label={
                                 <span className="athlete-stats-comp-inner">
                                   <OrgLogo

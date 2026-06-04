@@ -1,5 +1,9 @@
 import type { AthleteAwardEntry, TeamCareerSummary, TeamEditionStatRow } from "@/lib/types";
 
+export function countTeamChampionTitles(teamAwards: AthleteAwardEntry[]): number {
+  return teamAwards.filter((row) => row.award_type === "champion").length;
+}
+
 function sumEditionStats(rows: TeamEditionStatRow[]) {
   return rows.reduce(
     (acc, row) => ({
@@ -46,6 +50,6 @@ export function buildTeamCareerSummary(input: {
     goals_scored: fromEditions.goals_scored,
     goals_conceded: fromEditions.goals_conceded,
     points: fromEditions.points,
-    titles: input.teamAwards.filter((a) => a.award_type === "champion").length,
+    titles: countTeamChampionTitles(input.teamAwards),
   };
 }

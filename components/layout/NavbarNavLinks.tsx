@@ -3,16 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const NAV_LINKS = [
+export const NAV_LINKS = [
   { href: "/competicoes", label: "COMPETIÇÕES" },
   { href: "/times", label: "EQUIPES" },
   { href: "/atletas", label: "ATLETAS" },
   { href: "/news", label: "NOTÍCIAS" },
   { href: "/arenas", label: "ARENAS" },
   { href: "/hall-da-fama", label: "HALL DA FAMA" },
-];
+] as const;
 
-function isActive(pathname: string, href: string): boolean {
+export function isNavLinkActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -27,7 +27,7 @@ export function NavbarNavLinks() {
           key={link.href}
           href={link.href}
           className={`nav-link font-mono-label text-[10px] font-bold uppercase tracking-widest text-white/55 transition-colors hover:text-[var(--color-brand)] ${
-            isActive(pathname, link.href) ? "active text-[var(--color-brand)]" : ""
+            isNavLinkActive(pathname, link.href) ? "active text-[var(--color-brand)]" : ""
           }`}
         >
           {link.label}

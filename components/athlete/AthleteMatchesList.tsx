@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AthleteCompetitionFilter } from "@/components/athlete/AthleteCompetitionFilter";
 import { isAssistActionType } from "@/lib/match/actionTypes";
-import type { AthleteProfileData, Match, Team } from "@/lib/types";
+import type { AthleteProfileData, Competition, Match, Team } from "@/lib/types";
 import { isMatchFinished } from "@/lib/utils";
 
 type MatchTeam = Pick<Team, "id" | "short_name" | "full_name" | "logo_url"> | null | undefined;
@@ -77,17 +77,19 @@ function ratingTone(rating: number | null): string {
 
 type MatchItem = AthleteProfileData["recentMatches"][number];
 
-type CompetitionInfo = NonNullable<
-  MatchItem["match"]["phases"]
-> extends { competition_editions?: { competitions?: infer C } }
-  ? C
-  : null;
+type CompetitionInfo = Pick<
+  Competition,
+  "id" | "full_name" | "short_name" | "logo_url"
+> | null;
 
 interface AthleteMatchesListProps {
   matches: AthleteProfileData["recentMatches"];
   className?: string;
   emptyMessage?: string;
   emptyFilterMessage?: string;
+  emptyEditionFilterMessage?: string;
+  /** Exibe filtro por edição após escolher uma competição (página do time). */
+  enableEditionFilter?: boolean;
 }
 
 export function AthleteMatchesList({
@@ -95,8 +97,11 @@ export function AthleteMatchesList({
   className = "",
   emptyMessage = "Nenhum jogo com presença encontrado para este atleta.",
   emptyFilterMessage = "Nenhuma partida nesta competição.",
+  emptyEditionFilterMessage = "Nenhuma partida nesta edição.",
+  enableEditionFilter = false,
 }: AthleteMatchesListProps) {
   const [competitionId, setCompetitionId] = useState("all");
+  const [editionId, setEditionId] = useState("all");
 
   const sorted = useMemo(
     () =>
@@ -126,14 +131,41 @@ export function AthleteMatchesList({
     );
   }, [sorted]);
 
-  const filtered = useMemo(() => {
-    if (competitionId === "all") return sorted;
-    return sorted.filter(
-      (item) =>
-        item.match.phases?.competition_editions?.competitions?.id ===
-        competitionId,
+  const editionOptions = useMemo(() => {
+    if (!enableEditionFilter || competitionId === "all") return [];
+    const map = new Map<string, { id: string; label: string }>();
+    for (const item of sorted) {
+      const edition = item.match.phases?.competition_editions;
+      const comp = edition?.competitions;
+      if (comp?.id !== competitionId || !edition?.id) continue;
+      if (map.has(edition.id)) continue;
+      const season = edition.seasons?.name?.trim();
+      map.set(edition.id, {
+        id: edition.id,
+        label: season || "Edição",
+      });
+    }
+    return [...map.values()].sort((a, b) =>
+      a.label.localeCompare(b.label, "pt-BR"),
     );
-  }, [sorted, competitionId]);
+  }, [sorted, competitionId, enableEditionFilter]);
+
+  const filtered = useMemo(() => {
+    let list = sorted;
+    if (competitionId !== "all") {
+      list = list.filter(
+        (item) =>
+          item.match.phases?.competition_editions?.competitions?.id ===
+          competitionId,
+      );
+    }
+    if (enableEditionFilter && editionId !== "all") {
+      list = list.filter(
+        (item) => item.match.phases?.competition_editions?.id === editionId,
+      );
+    }
+    return list;
+  }, [sorted, competitionId, editionId, enableEditionFilter]);
 
   /** Grupos na ordem da partida mais recente de cada competição */
   const grouped = useMemo(() => {
@@ -175,16 +207,38 @@ export function AthleteMatchesList({
 
   return (
     <section className={`athlete-matches-panel ${className}`.trim()}>
-      <div className="athlete-matches-toolbar">
+      <div className="athlete-matches-toolbar athlete-matches-toolbar--inline">
         <AthleteCompetitionFilter
           value={competitionId}
           options={competitionOptions}
-          onChange={setCompetitionId}
+          onChange={(id) => {
+            setCompetitionId(id);
+            setEditionId("all");
+          }}
         />
+        {enableEditionFilter && competitionId !== "all" && editionOptions.length > 0 ? (
+          <AthleteCompetitionFilter
+            value={editionId}
+            allLabel="Todas as edições"
+            showLogo={false}
+            options={editionOptions.map((o) => ({
+              id: o.id,
+              label: o.label,
+              logoUrl: null,
+            }))}
+            onChange={setEditionId}
+          />
+        ) : null}
       </div>
 
       {filtered.length === 0 ? (
-        <p className="athlete-matches-empty">{emptyFilterMessage}</p>
+        <p className="athlete-matches-empty">
+          {enableEditionFilter && editionId !== "all"
+            ? emptyEditionFilterMessage
+            : competitionId !== "all"
+              ? emptyFilterMessage
+              : emptyMessage}
+        </p>
       ) : (
         <div className="athlete-matches-cards">
           {grouped.map((group) => (

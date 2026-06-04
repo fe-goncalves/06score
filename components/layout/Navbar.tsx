@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { NavbarNavLinks } from "@/components/layout/NavbarNavLinks";
+import { NAV_LINKS, NavbarNavLinks, isNavLinkActive } from "@/components/layout/NavbarNavLinks";
 import { NavbarSocial } from "@/components/layout/NavbarSocial";
 import { OrgImage } from "@/components/ui/OrgImage";
 import type { Organization } from "@/lib/types";
@@ -15,18 +15,6 @@ interface NavbarProps {
 export function Navbar({ org }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
-
-  const mobileLinks = [
-    { href: "/", label: "Home" },
-    { href: "/competicoes", label: "Jogos" },
-    { href: "/news", label: "Notícias" },
-    { href: "/ranking", label: "Ranking" },
-    { href: "/hall-da-fama", label: "Hall da Fama" },
-    { href: "/arenas", label: "Arenas" },
-  ];
-
-  const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <header className="navbar-top sticky top-0 z-50">
@@ -65,12 +53,12 @@ export function Navbar({ org }: NavbarProps) {
         <div className="border-t border-white/10 bg-[#090909]/95 md:hidden">
           <nav className="page-container py-3">
             <ul className="grid gap-1">
-              {mobileLinks.map((link) => (
+              {NAV_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
                     className={`block rounded-md px-3 py-2 font-mono-label text-[10px] uppercase tracking-wider ${
-                      isActive(link.href) ? "bg-white/10 text-[var(--color-brand)]" : "text-white/70"
+                      isNavLinkActive(pathname, link.href) ? "bg-white/10 text-[var(--color-brand)]" : "text-white/70"
                     }`}
                     onClick={() => setMobileOpen(false)}
                   >

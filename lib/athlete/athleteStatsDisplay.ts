@@ -6,24 +6,6 @@ import type {
   Team,
 } from "@/lib/types";
 
-function tripleFromEditionRow(
-  row: AthleteEditionStatRow,
-  kind: HubProfileKind,
-): { primary: number; secondary: number; tertiary: number } {
-  if (kind === "staff") {
-    return {
-      primary: row.wins ?? row.goals ?? 0,
-      secondary: row.draws ?? row.assists ?? 0,
-      tertiary: row.losses ?? row.motm_count ?? 0,
-    };
-  }
-  return {
-    primary: row.goals,
-    secondary: row.assists,
-    tertiary: row.motm_count,
-  };
-}
-
 export interface AthleteStatsFilterState {
   teamId: string;
   year: string;
@@ -38,11 +20,18 @@ export interface AthleteStatsFilterOptions {
 
 export interface AthleteStatsNumericSlice {
   matches_played: number;
+  wins: number;
+  draws: number;
+  losses: number;
   goals: number;
   assists: number;
   yellow_cards: number;
   red_cards: number;
   motm_count: number;
+  penalties_taken: number;
+  penalties_scored: number;
+  shootouts_taken: number;
+  shootouts_scored: number;
   avg_rating: number | null;
 }
 
@@ -53,6 +42,23 @@ export interface AthleteStatsSeasonGroup {
   summary: AthleteStatsNumericSlice;
   teamLogoUrl: string | null;
   competitions: AthleteEditionStatRow[];
+}
+
+function num(value: unknown, fallback = 0): number {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function wdlFromEditionRow(row: AthleteEditionStatRow): {
+  wins: number;
+  draws: number;
+  losses: number;
+} {
+  return {
+    wins: num(row.wins),
+    draws: num(row.draws),
+    losses: num(row.losses),
+  };
 }
 
 function teamLabel(team: Pick<Team, "abbreviation" | "full_name"> | null | undefined): string {
@@ -66,7 +72,11 @@ export function getYearValue(row: AthleteEditionStatRow): number | null {
 }
 
 export function getCompetitionId(row: AthleteEditionStatRow): string | null {
-  return row.competition_editions?.competition_id ?? null;
+  return (
+    row.competition_editions?.competition_id ??
+    row.competition_editions?.competitions?.id ??
+    null
+  );
 }
 
 export function getSeasonId(row: AthleteEditionStatRow): string | null {
@@ -159,23 +169,41 @@ function sumNumeric(
 ): Omit<AthleteStatsNumericSlice, "avg_rating"> {
   return rows.reduce(
     (acc, row) => {
-      const t = tripleFromEditionRow(row, kind);
-      return {
+      const wdl = wdlFromEditionRow(row);
+      const base = {
         matches_played: acc.matches_played + row.matches_played,
-        goals: acc.goals + t.primary,
-        assists: acc.assists + t.secondary,
+        wins: acc.wins + wdl.wins,
+        draws: acc.draws + wdl.draws,
+        losses: acc.losses + wdl.losses,
         yellow_cards: acc.yellow_cards + row.yellow_cards,
         red_cards: acc.red_cards + row.red_cards,
-        motm_count: acc.motm_count + t.tertiary,
+        penalties_taken: acc.penalties_taken + num(row.penalties_taken),
+        penalties_scored: acc.penalties_scored + num(row.penalties_scored),
+        shootouts_taken: acc.shootouts_taken + num(row.shootouts_taken),
+        shootouts_scored: acc.shootouts_scored + num(row.shootouts_scored),
+      };
+      if (kind === "staff") return base;
+      return {
+        ...base,
+        goals: acc.goals + row.goals,
+        assists: acc.assists + row.assists,
+        motm_count: acc.motm_count + row.motm_count,
       };
     },
     {
       matches_played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
       goals: 0,
       assists: 0,
       yellow_cards: 0,
       red_cards: 0,
       motm_count: 0,
+      penalties_taken: 0,
+      penalties_scored: 0,
+      shootouts_taken: 0,
+      shootouts_scored: 0,
     },
   );
 }
@@ -197,14 +225,21 @@ export function sliceFromEditionRow(
   row: AthleteEditionStatRow,
   kind: HubProfileKind = "athlete",
 ): AthleteStatsNumericSlice {
-  const t = tripleFromEditionRow(row, kind);
+  const wdl = wdlFromEditionRow(row);
   return {
     matches_played: row.matches_played,
-    goals: t.primary,
-    assists: t.secondary,
+    wins: wdl.wins,
+    draws: wdl.draws,
+    losses: wdl.losses,
+    goals: kind === "staff" ? 0 : row.goals,
+    assists: kind === "staff" ? 0 : row.assists,
     yellow_cards: row.yellow_cards,
     red_cards: row.red_cards,
-    motm_count: t.tertiary,
+    motm_count: kind === "staff" ? 0 : row.motm_count,
+    penalties_taken: num(row.penalties_taken),
+    penalties_scored: num(row.penalties_scored),
+    shootouts_taken: num(row.shootouts_taken),
+    shootouts_scored: num(row.shootouts_scored),
     avg_rating: row.avg_rating,
   };
 }
@@ -241,11 +276,18 @@ export function buildCareerTotalsRow(
     const s = career as StaffCareerStats | null;
     return {
       matches_played: s?.total_matches ?? 0,
-      goals: s?.total_wins ?? 0,
-      assists: s?.total_draws ?? 0,
+      wins: s?.total_wins ?? 0,
+      draws: s?.total_draws ?? 0,
+      losses: s?.total_losses ?? 0,
+      goals: 0,
+      assists: 0,
       yellow_cards: s?.total_yellow_cards ?? 0,
       red_cards: s?.total_red_cards ?? 0,
-      motm_count: s?.total_losses ?? 0,
+      motm_count: 0,
+      penalties_taken: 0,
+      penalties_scored: 0,
+      shootouts_taken: 0,
+      shootouts_scored: 0,
       avg_rating:
         s?.avg_rating != null && Number.isFinite(Number(s.avg_rating))
           ? Math.round(Number(s.avg_rating) * 100) / 100
@@ -255,11 +297,18 @@ export function buildCareerTotalsRow(
   const a = career as AthleteCareerStats | null;
   return {
     matches_played: a?.total_matches ?? 0,
+    wins: a?.total_wins ?? 0,
+    draws: a?.total_draws ?? 0,
+    losses: a?.total_losses ?? 0,
     goals: a?.total_goals ?? 0,
     assists: a?.total_assists ?? 0,
     yellow_cards: a?.total_yellow_cards ?? 0,
     red_cards: a?.total_red_cards ?? 0,
     motm_count: a?.total_motm ?? 0,
+    penalties_taken: a?.total_penalties_taken ?? 0,
+    penalties_scored: a?.total_penalties_scored ?? 0,
+    shootouts_taken: a?.total_shootouts_taken ?? 0,
+    shootouts_scored: a?.total_shootouts_scored ?? 0,
     avg_rating:
       a?.avg_rating != null && Number.isFinite(Number(a.avg_rating))
         ? Math.round(Number(a.avg_rating) * 100) / 100
