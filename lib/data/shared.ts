@@ -74,7 +74,8 @@ async function attachTeamsToEditionRows(
   const { data: teamsData, error: teamsError } = await supabase
     .from("teams")
     .select("id, full_name, short_name, abbreviation, logo_url, primary_color")
-    .in("id", teamIds);
+    .in("id", teamIds)
+    .eq("is_virtual", false);
 
   if (teamsError) {
     console.error("[attachTeamsToEditionRows]", teamsError.message);
@@ -134,7 +135,8 @@ export async function fetchEditionTeamsByIds(
     const { data: teamsData, error: teamsError } = await supabase
       .from("teams")
       .select("id, full_name, short_name, abbreviation, logo_url, primary_color")
-      .in("id", teamIds);
+      .in("id", teamIds)
+      .eq("is_virtual", false);
 
     if (teamsError) {
       console.error("[fetchEditionTeamsByIds teams]", teamsError.message);
@@ -331,7 +333,8 @@ export async function enrichMatchupsWithTeams(
   const { data: teamsData, error } = await supabase
     .from("teams")
     .select("id, full_name, short_name, abbreviation, logo_url, primary_color")
-    .in("id", teamIds);
+    .in("id", teamIds)
+    .eq("is_virtual", false);
 
   if (error) {
     console.error("[enrichMatchupsWithTeams]", error.message);

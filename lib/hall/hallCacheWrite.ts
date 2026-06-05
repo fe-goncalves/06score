@@ -24,7 +24,11 @@ export async function hallCategoryToCacheItems(
           .in("id", athleteIds)
       : Promise.resolve({ data: [] }),
     teamIds.length
-      ? supabase.from("teams").select("id, full_name, logo_url").in("id", teamIds)
+      ? supabase
+          .from("teams")
+          .select("id, full_name, logo_url")
+          .in("id", teamIds)
+          .eq("is_virtual", false)
       : Promise.resolve({ data: [] }),
   ]);
 

@@ -176,6 +176,7 @@ export async function getOrgTeams(orgId: string): Promise<Team[]> {
       "id, full_name, short_name, abbreviation, logo_url, primary_color",
     )
     .eq("organization_id", orgId)
+    .eq("is_virtual", false)
     .order("full_name", { ascending: true });
 
   if (error) {

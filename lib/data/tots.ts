@@ -67,7 +67,8 @@ async function fetchTeamsMap(teamIds: string[]): Promise<Map<string, Team>> {
   const { data, error } = await supabase
     .from("teams")
     .select("id, full_name, short_name, abbreviation, logo_url, primary_color")
-    .in("id", teamIds);
+    .in("id", teamIds)
+    .eq("is_virtual", false);
 
   if (error) {
     console.error("[fetchEditionTotsSquad teams]", error.message);

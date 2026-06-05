@@ -100,25 +100,45 @@ async function fetchGoalkeeperIds(supabase: SupabaseClient): Promise<Set<string>
 async function fetchAthleteTeamSnippet(
   supabase: SupabaseClient,
   athleteIds: string[],
-): Promise<Map<string, { team_name: string | null; team_logo: string | null }>> {
+): Promise<
+  Map<
+    string,
+    {
+      team_name: string | null;
+      team_logo: string | null;
+      accent_color: string | null;
+    }
+  >
+> {
   if (!athleteIds.length) return new Map();
 
   const { data } = await supabase
     .from("athletes")
     .select(
-      "id, athlete_team_stints(is_current, teams(full_name, logo_url))",
+      "id, athlete_team_stints(is_current, teams(full_name, logo_url, primary_color))",
     )
     .in("id", athleteIds);
 
-  const map = new Map<string, { team_name: string | null; team_logo: string | null }>();
+  const map = new Map<
+    string,
+    { team_name: string | null; team_logo: string | null; accent_color: string | null }
+  >();
   for (const row of data ?? []) {
     const stints = row.athlete_team_stints as
-      | { is_current?: boolean; teams?: { full_name?: string; logo_url?: string | null } | null }[]
+      | {
+          is_current?: boolean;
+          teams?: {
+            full_name?: string;
+            logo_url?: string | null;
+            primary_color?: string | null;
+          } | null;
+        }[]
       | null;
     const current = (stints ?? []).find((s) => s.is_current) ?? stints?.[0];
     map.set(row.id as string, {
       team_name: current?.teams?.full_name ?? null,
       team_logo: current?.teams?.logo_url ?? null,
+      accent_color: current?.teams?.primary_color ?? null,
     });
   }
   return map;
@@ -127,7 +147,10 @@ async function fetchAthleteTeamSnippet(
 function buildAthleteEntries(
   sorted: { id: string; value: number; value_display?: string | null }[],
   athleteMap: Map<string, { full_name?: string; surname?: string | null; photo_url?: string | null }>,
-  teamMap: Map<string, { team_name: string | null; team_logo: string | null }>,
+  teamMap: Map<
+    string,
+    { team_name: string | null; team_logo: string | null; accent_color: string | null }
+  >,
 ): HallEntry[] {
   return sorted.map(({ id, value, value_display }) => {
     const athlete = athleteMap.get(id);
@@ -140,6 +163,7 @@ function buildAthleteEntries(
       value_display: value_display ?? null,
       team_name: team?.team_name ?? null,
       team_logo: team?.team_logo ?? null,
+      accent_color: team?.accent_color ?? null,
     };
   });
 }
@@ -837,7 +861,10 @@ async function fetchGoalsInMatch(
   if (!ranked.length) return null;
 
   const athleteIds = [...new Set(ranked.map((r) => r.athlete_id))];
-  const athleteMap = await loadAthletesByIds(supabase, athleteIds);
+  const [athleteMap, teamMap] = await Promise.all([
+    loadAthletesByIds(supabase, athleteIds),
+    fetchAthleteTeamSnippet(supabase, athleteIds),
+  ]);
   const def = HALL_ATHLETE_CUSTOM_CATEGORIES.find((c) => c.key === "goals_in_match")!;
 
   return {
@@ -847,6 +874,7 @@ async function fetchGoalsInMatch(
     section: "athletes",
     entries: ranked.map((row) => {
       const athlete = athleteMap.get(row.athlete_id);
+      const team = teamMap.get(row.athlete_id);
       return {
         id: row.athlete_id,
         name: athleteName(athlete ?? null),
@@ -854,6 +882,7 @@ async function fetchGoalsInMatch(
         value: row.value,
         team_name: row.contextLine,
         context: row.entryContext,
+        accent_color: team?.accent_color ?? null,
       };
     }),
   };
@@ -1004,29 +1033,33 @@ async function fetchTeamStatCategory(
         row.value > 0 &&
         passesTeamGender(row.team_id, ctx.teamGenderSet),
     )
-    .sort((a, b) => b.value - a.value || a.team_id.localeCompare(b.team_id))
-    .slice(0, TOP_N);
+    .sort((a, b) => b.value - a.value || a.team_id.localeCompare(b.team_id));
 
   if (!ranked.length) return null;
 
   const teamIds = ranked.map((r) => r.team_id);
   const { data: teams } = await supabase
     .from("teams")
-    .select("id, full_name, logo_url")
-    .in("id", teamIds);
+    .select("id, full_name, logo_url, primary_color")
+    .in("id", teamIds)
+    .eq("is_virtual", false);
   const teamMap = new Map((teams ?? []).map((t) => [t.id as string, t]));
+
+  const rankedReal = ranked.filter((r) => teamMap.has(r.team_id)).slice(0, TOP_N);
+  if (!rankedReal.length) return null;
 
   return {
     key: cat.key,
     label: cat.label,
     valueLabel: cat.valueLabel,
     section: "teams",
-    entries: ranked.map((r) => {
+    entries: rankedReal.map((r) => {
       const team = teamMap.get(r.team_id);
       return {
         id: r.team_id,
         name: team?.full_name ?? "—",
         photo_url: team?.logo_url ?? null,
+        accent_color: (team?.primary_color as string | null) ?? null,
         value: r.value,
       };
     }),
@@ -1038,31 +1071,33 @@ async function buildTeamCountCategory(
   counts: Map<string, number>,
   cat: TeamStatCategoryDef | HallCustomCategoryDef,
 ): Promise<HallCategory | null> {
-  const sorted = [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, TOP_N);
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
 
   if (!sorted.length) return null;
 
   const teamIds = sorted.map(([id]) => id);
   const { data: teams } = await supabase
     .from("teams")
-    .select("id, full_name, logo_url")
-    .in("id", teamIds);
+    .select("id, full_name, logo_url, primary_color")
+    .in("id", teamIds)
+    .eq("is_virtual", false);
 
   const teamMap = new Map((teams ?? []).map((t) => [t.id as string, t]));
+  const sortedReal = sorted.filter(([id]) => teamMap.has(id)).slice(0, TOP_N);
+  if (!sortedReal.length) return null;
 
   return {
     key: cat.key,
     label: cat.label,
     valueLabel: cat.valueLabel,
     section: "teams",
-    entries: sorted.map(([id, value]) => {
+    entries: sortedReal.map(([id, value]) => {
       const team = teamMap.get(id);
       return {
         id,
         name: team?.full_name ?? "—",
         photo_url: team?.logo_url ?? null,
+        accent_color: (team?.primary_color as string | null) ?? null,
         value,
       };
     }),
@@ -1078,7 +1113,11 @@ async function buildStreakEntries(
   const editionIds = [...new Set(rows.map((r) => r.edition_id))];
 
   const [teamsRes, editionsRes] = await Promise.all([
-    supabase.from("teams").select("id, full_name, logo_url").in("id", teamIds),
+    supabase
+      .from("teams")
+      .select("id, full_name, logo_url, primary_color")
+      .in("id", teamIds)
+      .eq("is_virtual", false),
     supabase
       .from("competition_editions")
       .select("id, competitions(short_name, full_name), seasons(name)")
@@ -1095,16 +1134,19 @@ async function buildStreakEntries(
     }),
   );
 
-  return rows.map((r) => {
-    const t = teamsMap.get(r.team_id);
-    return {
-      id: r.team_id,
-      name: t?.full_name ?? "—",
-      photo_url: t?.logo_url ?? null,
-      value: Number(r[valueField]) || 0,
-      team_name: editionsMap.get(r.edition_id as string) ?? null,
-    };
-  });
+  return rows
+    .filter((r) => teamsMap.has(r.team_id))
+    .map((r) => {
+      const t = teamsMap.get(r.team_id);
+      return {
+        id: r.team_id,
+        name: t?.full_name ?? "—",
+        photo_url: t?.logo_url ?? null,
+        accent_color: (t?.primary_color as string | null) ?? null,
+        value: Number(r[valueField]) || 0,
+        team_name: editionsMap.get(r.edition_id as string) ?? null,
+      };
+    });
 }
 
 async function fetchTeamSpecialCategories(
@@ -1222,21 +1264,32 @@ async function fetchTeamSpecialCategories(
       .slice(0, TOP_N);
     if (top.length) {
       const teamIds = [...new Set(top.flatMap((g) => [g.winner, g.loser]))];
-      const { data: teams } = await supabase.from("teams").select("id, full_name, logo_url").in("id", teamIds);
+      const { data: teams } = await supabase
+        .from("teams")
+        .select("id, full_name, logo_url, primary_color")
+        .in("id", teamIds)
+        .eq("is_virtual", false);
       const teamMap = new Map((teams ?? []).map((t) => [t.id as string, t]));
+      const topReal = top.filter((g) => teamMap.has(g.winner));
+      if (!topReal.length) return results;
+
       const def = HALL_TEAM_SPECIAL_CATEGORIES.find((c) => c.key === "maior_goleada")!;
       results.push({
         key: def.key,
         label: def.label,
         valueLabel: def.valueLabel,
         section: "teams",
-        entries: top.map((g) => ({
-          id: g.winner,
-          name: teamMap.get(g.winner)?.full_name ?? "—",
-          photo_url: teamMap.get(g.winner)?.logo_url ?? null,
-          value: g.diff,
-          team_name: `${g.score} vs ${teamMap.get(g.loser)?.full_name ?? "—"}`,
-        })),
+        entries: topReal.map((g) => {
+          const winner = teamMap.get(g.winner);
+          return {
+            id: g.winner,
+            name: winner?.full_name ?? "—",
+            photo_url: winner?.logo_url ?? null,
+            accent_color: (winner?.primary_color as string | null) ?? null,
+            value: g.diff,
+            team_name: `${g.score} vs ${teamMap.get(g.loser)?.full_name ?? "—"}`,
+          };
+        }),
       });
     }
   }

@@ -181,6 +181,7 @@ async function fetchAthleteEditionStatsFallback(
             .from("teams")
             .select("id, full_name, abbreviation, logo_url")
             .in("id", teamIds)
+            .eq("is_virtual", false)
         : Promise.resolve({ data: [], error: null }),
     ]);
 

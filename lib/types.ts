@@ -858,6 +858,8 @@ export interface HallEntry {
   /** Texto auxiliar (equipe, edição, placar). */
   team_name?: string | null;
   team_logo?: string | null;
+  /** Cor da equipe atual (atleta) ou da própria equipe — fundo do card. */
+  accent_color?: string | null;
   /** Valor formatado quando não é número simples (ex.: "85%"). */
   value_display?: string | null;
   /** Contexto estruturado (cache / métricas por jogo). */

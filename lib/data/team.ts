@@ -66,6 +66,7 @@ async function fetchTeamRecord(
     .select(TEAM_SELECT)
     .eq("id", teamId)
     .eq("organization_id", orgId)
+    .eq("is_virtual", false)
     .maybeSingle();
 
   if (error || !data) {

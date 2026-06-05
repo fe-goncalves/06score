@@ -129,7 +129,8 @@ export async function getTeamIdsByGender(
     .from("teams")
     .select("id")
     .eq("organization_id", organizationId)
-    .eq("gender", gender);
+    .eq("gender", gender)
+    .eq("is_virtual", false);
 
   if (error) {
     console.error("[getTeamIdsByGender]", error.message);
