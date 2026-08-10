@@ -1,28 +1,50 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { StatsTotwGallery } from "@/components/competition/StatsTotwGallery";
+import { SearchableFilter } from "@/components/ui/SearchableFilter";
 import { OrgImage } from "@/components/ui/OrgImage";
-import type { TotwGalleryEntry } from "@/lib/types";
+import type { Phase } from "@/lib/types";
+import { phaseLabel } from "@/lib/competition/phases";
 
 interface StatsLeaderModalProps {
   title: string;
   accentColor?: string | null;
-  totwGallery: TotwGalleryEntry[];
   onClose: () => void;
   children: ReactNode;
+  teamOptions: { id: string; label: string; logoUrl?: string | null }[];
+  positionOptions: { id: string; label: string }[];
+  phases: Phase[];
+  teamFilter: string;
+  positionFilter: string;
+  phaseFilter: string;
+  onTeamFilter: (id: string) => void;
+  onPositionFilter: (id: string) => void;
+  onPhaseFilter: (id: string) => void;
 }
 
 export function StatsLeaderModal({
   title,
   accentColor,
-  totwGallery,
   onClose,
   children,
+  teamOptions,
+  positionOptions,
+  phases,
+  teamFilter,
+  positionFilter,
+  phaseFilter,
+  onTeamFilter,
+  onPositionFilter,
+  onPhaseFilter,
 }: StatsLeaderModalProps) {
   const accent = accentColor ?? "var(--color-brand)";
+
+  const phaseOptions = useMemo(
+    () => phases.map((p) => ({ id: p.id, label: phaseLabel(p) })),
+    [phases],
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -44,7 +66,7 @@ export function StatsLeaderModal({
       role="presentation"
     >
       <div
-        className="stats-leader-modal"
+        className="stats-leader-modal stats-leader-modal--filters"
         role="dialog"
         aria-modal="true"
         aria-labelledby="stats-leader-modal-title"
@@ -65,16 +87,31 @@ export function StatsLeaderModal({
           </button>
         </header>
 
-        <div className="stats-leader-modal-split">
-          <div className="stats-leader-modal-main">{children}</div>
-          <aside className="stats-leader-modal-aside">
-            <StatsTotwGallery
-              entries={totwGallery}
-              accentColor={accentColor}
-              compact
-            />
-          </aside>
+        <div className="stats-leader-modal-filters">
+          <SearchableFilter
+            label="Equipe"
+            value={teamFilter}
+            options={teamOptions}
+            onChange={onTeamFilter}
+            allLabel="Todas as equipes"
+          />
+          <SearchableFilter
+            label="Fase"
+            value={phaseFilter}
+            options={phaseOptions}
+            onChange={onPhaseFilter}
+            allLabel="Todas as fases"
+          />
+          <SearchableFilter
+            label="Posição"
+            value={positionFilter}
+            options={positionOptions}
+            onChange={onPositionFilter}
+            allLabel="Todas as posições"
+          />
         </div>
+
+        <div className="stats-leader-modal-main">{children}</div>
       </div>
     </div>
   );
@@ -82,36 +119,25 @@ export function StatsLeaderModal({
 
 export function StatsLeaderModalRow({
   href,
-  rank,
   photo,
   name,
   teamLogo,
   teamAlt,
   value,
-  sub,
-  isTop,
 }: {
   href?: string;
-  rank: number;
   photo?: ReactNode;
   name: string;
   teamLogo?: string | null;
   teamAlt?: string;
   value: number | string;
-  sub?: string;
-  isTop?: boolean;
 }) {
   const content = (
     <>
-      <span className="competition-leader-rank">{rank}</span>
       {photo}
-      <div
-        className={`competition-leader-main ${sub ? "competition-leader-main-team" : ""}`}
-      >
+      <div className="competition-leader-main">
         <p className="competition-leader-name">{name}</p>
-        {sub ? (
-          <p className="competition-leader-sub">{sub}</p>
-        ) : teamLogo ? (
+        {teamLogo ? (
           <OrgImage
             src={teamLogo}
             alt={teamAlt ?? "Time"}
@@ -125,9 +151,7 @@ export function StatsLeaderModalRow({
     </>
   );
 
-  const className = `competition-leader-item stats-leader-modal-row ${
-    isTop ? "competition-leader-item-top" : ""
-  }`;
+  const className = "competition-leader-item stats-leader-modal-row";
 
   if (href && href !== "#") {
     return (
@@ -138,4 +162,27 @@ export function StatsLeaderModalRow({
   }
 
   return <div className={className}>{content}</div>;
+}
+
+/** Hook state helper for modal filters. */
+export function useStatsModalFilters() {
+  const [teamFilter, setTeamFilter] = useState("all");
+  const [positionFilter, setPositionFilter] = useState("all");
+  const [phaseFilter, setPhaseFilter] = useState("all");
+
+  function reset() {
+    setTeamFilter("all");
+    setPositionFilter("all");
+    setPhaseFilter("all");
+  }
+
+  return {
+    teamFilter,
+    positionFilter,
+    phaseFilter,
+    setTeamFilter,
+    setPositionFilter,
+    setPhaseFilter,
+    reset,
+  };
 }

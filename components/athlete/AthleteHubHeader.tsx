@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, type CSSProperties, type ReactNode } from "react";
+import type { CSSProperties } from "react";
+import { AthletePhotoPlaceholder } from "@/components/ui/AthletePhotoPlaceholder";
+import { NationalityFlag } from "@/components/ui/NationalityFlag";
 import { OrgImage } from "@/components/ui/OrgImage";
-import {
-  formatAthleteBirthLine,
-  nationalityFlagEmoji,
-} from "@/lib/athlete/athleteHeaderFormat";
+import { nationalityIso2 } from "@/lib/athlete/athleteHeaderFormat";
 import type { TabItem } from "@/components/ui/PageTabs";
 import type { Athlete, AthleteTeamStint } from "@/lib/types";
 import { athleteSurnameLabel, getPositionName } from "@/lib/utils";
@@ -29,11 +28,10 @@ interface AthleteHubHeaderProps {
 export function AthleteHubHeader({
   athlete,
   currentStint,
-  age,
+  age: _age,
   tabs,
   activeTab,
   onTabChange,
-  breadcrumb = { href: "/atletas", label: "Atletas" },
   sectionNavLabel = "Seções do atleta",
 }: AthleteHubHeaderProps) {
   const team = currentStint?.teams;
@@ -41,37 +39,25 @@ export function AthleteHubHeader({
   const teamPrimary = team?.primary_color ?? null;
   const surname = athleteSurnameLabel(athlete.full_name, athlete.surname);
   const position = getPositionName(athlete.player_positions);
-  const teamShortName =
-    team?.short_name?.trim() || team?.abbreviation?.trim() || team?.full_name?.trim() || null;
-  const birthLine = formatAthleteBirthLine(athlete.birth_date, age);
-  const flag = nationalityFlagEmoji(athlete.nationality);
+  const positionLabel =
+    position && position !== "—" ? position.toUpperCase() : null;
+  const teamShortName = team?.short_name?.trim()
+    ? team.short_name.trim().toUpperCase()
+    : team?.abbreviation?.trim()
+      ? team.abbreviation.trim().toUpperCase()
+      : team?.full_name?.trim()
+        ? team.full_name.trim().toUpperCase()
+        : null;
+  const photoUrl = athlete.photo_url?.trim() || null;
+  const nationality = athlete.nationality?.trim() || null;
+  const hasNationalityFlag =
+    nationality != null && nationalityIso2(nationality) != null;
 
-  const detailItems: { key: string; node: ReactNode }[] = [];
-  if (athlete.nationality) {
-    detailItems.push({
-      key: "nationality",
-      node: (
-        <>
-          {flag ? (
-            <span className="athlete-hub-detail-flag" aria-hidden>
-              {flag}
-            </span>
-          ) : null}
-          <span>{athlete.nationality}</span>
-        </>
-      ),
-    });
-  }
-  if (birthLine) {
-    detailItems.push({ key: "birth", node: birthLine });
-  }
-  if (position && position !== "—") {
-    detailItems.push({ key: "position", node: position });
-  }
+  const showMeta = Boolean(nationality || positionLabel);
 
   return (
     <header
-      className="match-hub-header athlete-hub-header"
+      className="match-hub-header athlete-hub-header athlete-hub-header--centered"
       style={
         {
           "--match-accent": accent,
@@ -80,29 +66,35 @@ export function AthleteHubHeader({
         } as CSSProperties
       }
     >
-      <div className="athlete-hub-header-bg" aria-hidden />
+      <div className="athlete-hub-header-bg" aria-hidden>
+        {photoUrl ? (
+          <div
+            className="athlete-hub-header-wash"
+            style={{ backgroundImage: `url(${photoUrl})` }}
+          />
+        ) : null}
+      </div>
 
       <div className="match-hub-header-content athlete-hub-header-content">
-        <nav className="match-hub-breadcrumb athlete-hub-breadcrumb" aria-label="Navegação">
-          <Link href={breadcrumb.href} className="match-hub-breadcrumb-link">
-            {breadcrumb.label}
-          </Link>
-          <span className="match-hub-breadcrumb-sep" aria-hidden>
-            ›
-          </span>
-          <span className="match-hub-breadcrumb-current">{surname}</span>
-        </nav>
+        <div className="athlete-hub-hero athlete-hub-hero--centered">
+          {photoUrl ? (
+            <OrgImage
+              src={athlete.photo_url}
+              alt={athlete.full_name}
+              width={112}
+              height={112}
+              className="athlete-hub-photo"
+            />
+          ) : (
+            <span
+              className="athlete-hub-photo athlete-hub-photo--placeholder"
+              aria-hidden
+            >
+              <AthletePhotoPlaceholder className="athlete-hub-photo-icon" />
+            </span>
+          )}
 
-        <div className="athlete-hub-hero">
-          <OrgImage
-            src={athlete.photo_url}
-            alt={athlete.full_name}
-            width={72}
-            height={72}
-            className="athlete-hub-photo"
-          />
-
-          <div className="athlete-hub-identity">
+          <div className="athlete-hub-identity athlete-hub-identity--centered">
             <h1 className="athlete-hub-surname">{surname}</h1>
 
             {team?.id && teamShortName ? (
@@ -120,19 +112,30 @@ export function AthleteHubHeader({
               </Link>
             ) : null}
 
-            {detailItems.length > 0 ? (
-              <div className="athlete-hub-details">
-                {detailItems.map((item, index) => (
-                  <Fragment key={item.key}>
-                    {index > 0 ? (
-                      <span className="athlete-hub-detail-sep" aria-hidden>
-                        |
-                      </span>
+            {showMeta ? (
+              <p className="athlete-hub-role-line athlete-hub-meta-line">
+                {nationality ? (
+                  <>
+                    {hasNationalityFlag ? (
+                      <NationalityFlag
+                        nationality={nationality}
+                        className="athlete-hub-flag"
+                      />
                     ) : null}
-                    <span className="athlete-hub-detail">{item.node}</span>
-                  </Fragment>
-                ))}
-              </div>
+                    <span className="athlete-hub-nationality">
+                      {nationality.toUpperCase()}
+                    </span>
+                  </>
+                ) : null}
+                {nationality && positionLabel ? (
+                  <span className="athlete-hub-meta-sep" aria-hidden>
+                    ///
+                  </span>
+                ) : null}
+                {positionLabel ? (
+                  <span className="athlete-hub-position">{positionLabel}</span>
+                ) : null}
+              </p>
             ) : null}
           </div>
         </div>

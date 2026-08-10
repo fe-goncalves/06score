@@ -47,7 +47,8 @@ function cacheItemToEntry(item: HallCacheItem, section: HallCategory["section"])
       photo_url: item.athlete.photo_url ?? null,
       value: item.value,
       value_display: item.value_display ?? null,
-      team_name: formatContextLine(item.context ?? null),
+      team_name: item.athlete.team_name ?? formatContextLine(item.context ?? null),
+      team_logo: item.athlete.team_logo ?? null,
       context: item.context ?? null,
     };
   }
@@ -57,6 +58,7 @@ function cacheItemToEntry(item: HallCacheItem, section: HallCategory["section"])
     id: team?.id ?? "",
     name: team?.full_name ?? "—",
     photo_url: team?.logo_url ?? null,
+    abbreviation: team?.abbreviation ?? null,
     value: item.value,
     value_display: item.value_display ?? null,
     team_name: formatContextLine(item.context ?? null) ?? item.context?.competition ?? null,

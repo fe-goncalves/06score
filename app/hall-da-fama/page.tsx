@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { HallPageClient } from "@/components/hall/HallPageClient";
 import { DEFAULT_FILTERS, getHallData, getHallFilterOptions } from "@/lib/data/hall";
+import { metaTitle } from "@/lib/metaTitle";
 import { getOrgSlug, getOrganization } from "@/lib/org";
 import type { Metadata } from "next";
 import "./hall.css";
@@ -9,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const slug = await getOrgSlug();
   const org = await getOrganization(slug);
   return {
-    title: `Hall da Fama${org ? ` · ${org.name}` : ""}`,
+    title: metaTitle(org ? `${org.name} — HALL` : "HALL"),
   };
 }
 

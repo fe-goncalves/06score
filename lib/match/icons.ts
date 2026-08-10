@@ -1,8 +1,10 @@
 import {
   isFifthFoulActionType,
   isFoulActionType,
+  isPenaltyGoalType,
   isPenaltyMissedActionType,
   isRedCardActionType,
+  isShootoutGoalType,
   isStrictGoalActionType,
   isSubstitutionActionType,
   isTwoMinActionType,
@@ -45,7 +47,13 @@ export function resolveMatchIconKind(
   action: Pick<MatchAction, "action_type" | "goal_type" | "is_own_goal">,
 ): MatchIconKind {
   if (isStrictGoalActionType(action.action_type)) {
-    return "ball";
+    if (
+      isPenaltyGoalType(action.goal_type) ||
+      isShootoutGoalType(action.goal_type)
+    ) {
+      return "penalty";
+    }
+    return "goal";
   }
 
   if (isPenaltyMissedActionType(action.action_type)) {

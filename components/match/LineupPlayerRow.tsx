@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MatchEventIcon } from "@/components/match/icons/MatchEventIcon";
+import { MatchIcon } from "@/components/match/icons/MatchIcon";
 import { OrgImage } from "@/components/ui/OrgImage";
 import {
   buildAthleteActionIcons,
@@ -48,11 +49,14 @@ export function LineupPlayerRow({
         />
         <div className="match-lineup-row-body">
           <div className="match-lineup-row-top">
-            <span className="match-lineup-surname">
-              {surname}
-              {lineup.is_captain && (
-                <span className="match-lineup-captain"> (c)</span>
-              )}
+            <span className="match-lineup-surname">{surname}</span>
+            <span className="match-lineup-role-icons" aria-hidden>
+              {lineup.played_as_goalkeeper ? (
+                <MatchIcon name="glove" size={14} className="match-lineup-role-icon" />
+              ) : null}
+              {lineup.is_captain ? (
+                <MatchIcon name="captain" size={14} className="match-lineup-role-icon" />
+              ) : null}
             </span>
             {icons.length > 0 && (
               <span className="match-lineup-icons" aria-hidden>

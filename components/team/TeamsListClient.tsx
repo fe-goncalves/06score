@@ -1,7 +1,10 @@
 "use client";
 
-import { TeamGlassCard } from "@/components/team/TeamGlassCard";
-import { SectionEnter } from "@/components/ui/SectionEnter";
+import { useCallback, useMemo, useState } from "react";
+import { SiteListHero } from "@/components/layout/SiteListHero";
+import { TeamHorizontalCard } from "@/components/team/TeamHorizontalCard";
+import { LiquidGlassEntityList } from "@/components/ui/LiquidGlassEntityList";
+import { matchesQuery } from "@/lib/search/normalizeQuery";
 import type { Team } from "@/lib/types";
 
 interface TeamsListClientProps {
@@ -9,26 +12,61 @@ interface TeamsListClientProps {
 }
 
 export function TeamsListClient({ teams }: TeamsListClientProps) {
-  if (!teams.length) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const sorted = useMemo(
+    () =>
+      [...teams]
+        .filter((team): team is Team & { id: string } => Boolean(team.id))
+        .sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR")),
+    [teams],
+  );
+
+  const filterTeam = useCallback((team: Team, query: string) => {
     return (
-      <SectionEnter className="page-container pb-14">
-        <p className="font-mono-label text-xs text-white/40">
-          Nenhuma equipe cadastrada no momento.
-        </p>
-      </SectionEnter>
+      matchesQuery(team.full_name, query) ||
+      matchesQuery(team.short_name, query) ||
+      matchesQuery(team.abbreviation, query)
+    );
+  }, []);
+
+  if (!sorted.length) {
+    return (
+      <>
+        <SiteListHero title="EQUIPES" />
+        <div className="page-container pb-14 pt-2">
+          <p className="liquid-glass-list-empty">
+            Nenhuma equipe cadastrada no momento.
+          </p>
+        </div>
+      </>
     );
   }
 
   return (
-    <SectionEnter className="page-container pb-14 pt-2">
-      <h2 className="section-title mb-4">
-        {teams.length} {teams.length === 1 ? "equipe" : "equipes"}
-      </h2>
-      <div className="teams-list-grid">
-        {teams.map((team) => (
-          <TeamGlassCard key={team.id} team={team} />
-        ))}
-      </div>
-    </SectionEnter>
+    <>
+      <SiteListHero
+        title="EQUIPES"
+        searchId="equipes-search"
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+      />
+      <LiquidGlassEntityList
+        items={sorted}
+        searchId="equipes-search"
+        searchPlaceholder="Buscar equipe…"
+        hideSearch
+        searchTerm={searchTerm}
+        onSearchTermChange={setSearchTerm}
+        filterItem={filterTeam}
+        containerClassName="liquid-glass-list"
+        resultCountLabel={(count) =>
+          `${count} ${count === 1 ? "equipe" : "equipes"}`
+        }
+        emptyMessage="Nenhuma equipe encontrada."
+        renderItem={(team, index) => (
+          <TeamHorizontalCard key={team.id} team={team} index={index} />
+        )}
+      />
+    </>
   );
 }

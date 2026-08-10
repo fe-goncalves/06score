@@ -39,6 +39,14 @@ export function squadPositionBucket(
   return "MID";
 }
 
+const BUCKET_LABELS: Record<SquadPositionBucket, string> = {
+  GK: "Goleiros",
+  DEF: "Defensores",
+  MID: "Meio-campistas",
+  ATK: "Atacantes",
+  OTHER: "Outros",
+};
+
 /** Lista única: goleiros → defensores → meio → ataque; dentro do grupo, sobrenome A–Z. */
 export function sortSquadByPosition(
   squad: (Athlete & { id: string })[],
@@ -52,6 +60,36 @@ export function sortSquadByPosition(
       "pt-BR",
     );
   });
+}
+
+/** Agrupa elenco por posição (ordem de linha) com nomes A–Z dentro de cada grupo. */
+export function groupSquadByPosition(
+  squad: (Athlete & { id: string })[],
+): { bucket: SquadPositionBucket; label: string; players: (Athlete & { id: string })[] }[] {
+  const sorted = sortSquadByPosition(squad);
+  const groups: {
+    bucket: SquadPositionBucket;
+    label: string;
+    players: (Athlete & { id: string })[];
+  }[] = [];
+  const indexByBucket = new Map<SquadPositionBucket, number>();
+
+  for (const player of sorted) {
+    const bucket = squadPositionBucket(player.player_positions);
+    let idx = indexByBucket.get(bucket);
+    if (idx === undefined) {
+      idx = groups.length;
+      indexByBucket.set(bucket, idx);
+      groups.push({
+        bucket,
+        label: BUCKET_LABELS[bucket],
+        players: [],
+      });
+    }
+    groups[idx]!.players.push(player);
+  }
+
+  return groups;
 }
 
 export function positionAbbreviation(

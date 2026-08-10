@@ -1,3 +1,4 @@
+import { getPublishedNewsByCompetition } from "@/lib/data/news";
 import { buildEditionDetailsPanelData } from "@/lib/competition/detailsPanel";
 import {
   fetchEditionAwardsForHub,
@@ -22,6 +23,7 @@ import type {
   Group,
   GroupTeam,
   Match,
+  MatchRound,
   Matchup,
   Phase,
   TableMarker,
@@ -35,16 +37,38 @@ import {
 import { MATCH_SELECT_BASE } from "@/lib/utils";
 
 const ATHLETE_LEADER_SELECT =
-  "athletes(id, full_name, surname, photo_url), teams(full_name, short_name, logo_url, abbreviation)";
+  "athletes(id, full_name, surname, photo_url, player_positions(full_name, abbreviation)), teams(id, full_name, short_name, logo_url, abbreviation)";
+
+function formatEditionLabel(edition: CompetitionEdition | null): string {
+  if (!edition) return "";
+  const custom = edition.custom_name?.trim();
+  if (custom) return custom;
+  const seasons = edition.seasons;
+  if (Array.isArray(seasons)) return seasons[0]?.name?.trim() ?? "";
+  return seasons?.name?.trim() ?? "";
+}
 
 export async function getCompetitionName(
   competitionId: string,
   orgId: string,
+  requestedEditionId?: string | null,
 ): Promise<string | null> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("competitions")
-    .select("full_name")
+    .select(
+      `
+      short_name,
+      full_name,
+      competition_editions(
+        id,
+        status,
+        is_current,
+        custom_name,
+        seasons(name)
+      )
+    `,
+    )
     .eq("id", competitionId)
     .eq("organization_id", orgId)
     .maybeSingle();
@@ -54,7 +78,24 @@ export async function getCompetitionName(
     return null;
   }
 
-  return data?.full_name ?? null;
+  if (!data) return null;
+
+  const short =
+    (data.short_name as string | null)?.trim() ||
+    (data.full_name as string | null)?.trim() ||
+    "Competição";
+  const editions =
+    (data.competition_editions as CompetitionEdition[] | null) ?? [];
+  const current =
+    (requestedEditionId
+      ? editions.find((e) => e.id === requestedEditionId)
+      : null) ??
+    editions.find((e) => e.is_current) ??
+    editions[0] ??
+    null;
+  const edition = formatEditionLabel(current);
+  const title = edition ? `${short} · ${edition}` : short;
+  return title.toUpperCase();
 }
 
 export async function getCompetitionHub(
@@ -95,6 +136,7 @@ export async function getCompetitionHub(
       teamEditionStats: [],
       matches: [],
       matchups: [],
+      rounds: [],
       editionTeams: [],
       topScorers: [],
       topAssisters: [],
@@ -119,6 +161,8 @@ export async function getCompetitionHub(
         defendingChampion: null,
       },
       awards: [],
+      totsSquad: null,
+      news: [],
     };
   }
 
@@ -143,6 +187,7 @@ export async function getCompetitionHub(
     markersResult,
     awards,
     totsSquad,
+    news,
   ] = await Promise.all([
     supabase
       .from("phases")
@@ -185,37 +230,37 @@ export async function getCompetitionHub(
       .select(`goals, assists, ${ATHLETE_LEADER_SELECT}`)
       .eq("edition_id", editionId)
       .order("goals", { ascending: false })
-      .limit(10),
+      .limit(100),
     supabase
       .from("athlete_edition_stats")
       .select(`goals, assists, ${ATHLETE_LEADER_SELECT}`)
       .eq("edition_id", editionId)
       .order("assists", { ascending: false })
-      .limit(10),
+      .limit(100),
     supabase
       .from("athlete_edition_stats")
       .select(`yellow_cards, ${ATHLETE_LEADER_SELECT}`)
       .eq("edition_id", editionId)
       .order("yellow_cards", { ascending: false })
-      .limit(10),
+      .limit(100),
     supabase
       .from("athlete_edition_stats")
       .select(`motm_count, ${ATHLETE_LEADER_SELECT}`)
       .eq("edition_id", editionId)
       .order("motm_count", { ascending: false })
-      .limit(10),
+      .limit(100),
     supabase
       .from("athlete_edition_stats")
       .select(`red_cards, ${ATHLETE_LEADER_SELECT}`)
       .eq("edition_id", editionId)
       .order("red_cards", { ascending: false })
-      .limit(10),
+      .limit(100),
     supabase
       .from("athlete_edition_stats")
       .select(`totw_count, ${ATHLETE_LEADER_SELECT}`)
       .eq("edition_id", editionId)
       .order("totw_count", { ascending: false })
-      .limit(10),
+      .limit(100),
     supabase
       .from("groups")
       .select("id, phase_id, name, custom_label, display_order")
@@ -230,6 +275,7 @@ export async function getCompetitionHub(
       .order("display_order", { ascending: true }),
     fetchEditionAwardsForHub(editionId),
     fetchEditionTotsSquad(editionId),
+    getPublishedNewsByCompetition(orgId, competitionId),
   ]);
 
   const groups = (groupsResult.data as Group[] | null) ?? [];
@@ -276,21 +322,43 @@ export async function getCompetitionHub(
     .map((p) => p.id);
 
   let matchups: Matchup[] = [];
+  let rounds: MatchRound[] = [];
   if (knockoutPhaseIds.length) {
-    const { data: matchupsData, error: muError } = await supabase
-      .from("matchups")
-      .select(
-        "id, phase_id, conference_id, round_label, display_order, is_completed, team_a_id, team_b_id",
-      )
-      .in("phase_id", knockoutPhaseIds)
-      .order("display_order", { ascending: true });
+    const [matchupsResult, roundsResult] = await Promise.all([
+      supabase
+        .from("matchups")
+        .select(
+          "id, phase_id, conference_id, round_id, round_label, display_order, is_completed, team_a_id, team_b_id, aggregate_winner_id",
+        )
+        .in("phase_id", knockoutPhaseIds)
+        .order("display_order", { ascending: true }),
+      supabase
+        .from("rounds")
+        .select(
+          "id, phase_id, name, custom_label, display_order, is_current, legs, aggregate_score",
+        )
+        .in("phase_id", knockoutPhaseIds)
+        .order("display_order", { ascending: true }),
+    ]);
 
-    if (muError) {
-      console.error("[getCompetitionHub matchups]", muError.message);
+    if (matchupsResult.error) {
+      console.error("[getCompetitionHub matchups]", matchupsResult.error.message);
     } else {
       matchups = await enrichMatchupsWithTeams(
-        (matchupsData as Matchup[] | null) ?? [],
+        (matchupsResult.data as Matchup[] | null) ?? [],
       );
+    }
+
+    if (roundsResult.error) {
+      console.warn("[getCompetitionHub rounds]", roundsResult.error.message);
+      const { data: roundsFallback } = await supabase
+        .from("rounds")
+        .select("id, phase_id, name, custom_label, display_order")
+        .in("phase_id", knockoutPhaseIds)
+        .order("display_order", { ascending: true });
+      rounds = (roundsFallback as MatchRound[] | null) ?? [];
+    } else {
+      rounds = (roundsResult.data as MatchRound[] | null) ?? [];
     }
   }
 
@@ -375,6 +443,7 @@ export async function getCompetitionHub(
     teamEditionStats,
     matches,
     matchups,
+    rounds,
     editionTeams,
     editionDetails,
     awards,
@@ -392,6 +461,7 @@ export async function getCompetitionHub(
     groups,
     groupTeams,
     tableMarkers,
+    news,
   };
 }
 
@@ -414,6 +484,7 @@ export async function getCompetitionsList(
         id,
         status,
         is_current,
+        custom_name,
         seasons(name)
       )
     `,

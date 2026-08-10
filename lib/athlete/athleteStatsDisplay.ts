@@ -1,6 +1,7 @@
 import type {
   AthleteCareerStats,
   AthleteEditionStatRow,
+  AthleteRecentMatch,
   HubProfileKind,
   StaffCareerStats,
   Team,
@@ -208,8 +209,58 @@ function sumNumeric(
   );
 }
 
-/** Média ponderada por jogos (somente linhas com nota e matches_played > 0). */
+/** Média aritmética simples das notas de partidas (filtros opcionais). */
+export function averageMatchRatings(
+  recentMatches: AthleteRecentMatch[],
+  opts?: {
+    editionIds?: Set<string>;
+    teamId?: string;
+    phaseIds?: Set<string>;
+  },
+): number | null {
+  let sum = 0;
+  let count = 0;
+  for (const entry of recentMatches) {
+    if (entry.rating == null || !Number.isFinite(entry.rating)) continue;
+    if (opts?.editionIds) {
+      const editionId = entry.match.phases?.competition_editions?.id;
+      if (!editionId || !opts.editionIds.has(editionId)) continue;
+    }
+    if (opts?.teamId) {
+      if (entry.match.athlete_team_id !== opts.teamId) continue;
+    }
+    if (opts?.phaseIds) {
+      const phaseId = entry.match.phases?.id ?? entry.match.phase_id;
+      if (!phaseId || !opts.phaseIds.has(phaseId)) continue;
+    }
+    sum += entry.rating;
+    count += 1;
+  }
+  if (!count) return null;
+  return Math.round((sum / count) * 100) / 100;
+}
+
+/** Média não ponderada das `avg_rating` por linha de edição. */
+export function averageEditionRatings(rows: AthleteEditionStatRow[]): number | null {
+  let sum = 0;
+  let count = 0;
+  for (const row of rows) {
+    if (row.avg_rating == null || !Number.isFinite(row.avg_rating)) continue;
+    sum += row.avg_rating;
+    count += 1;
+  }
+  if (!count) return null;
+  return Math.round((sum / count) * 100) / 100;
+}
+
+/**
+ * Prefere contribuição igual por nota (média simples das avg_rating).
+ * Fallback: média ponderada por jogos quando não há notas utilizáveis no modo igual.
+ */
 export function weightedAvgRating(rows: AthleteEditionStatRow[]): number | null {
+  const equal = averageEditionRatings(rows);
+  if (equal != null) return equal;
+
   let sum = 0;
   let weight = 0;
   for (const row of rows) {
@@ -256,15 +307,33 @@ export function hasActiveStatsFilters(
   );
 }
 
+export type MatchRatingAvgOptions = {
+  teamId?: string;
+  phaseIds?: Set<string>;
+};
+
 /** TOTAL filtrado: soma das linhas de edição exibidas na tabela. */
 export function buildTotalsFromEditionRows(
   rows: AthleteEditionStatRow[],
   kind: HubProfileKind = "athlete",
+  recentMatches?: AthleteRecentMatch[],
+  matchOpts?: MatchRatingAvgOptions,
 ): AthleteStatsNumericSlice {
   const totals = sumNumeric(rows, kind);
+  let avg_rating: number | null = null;
+  if (recentMatches?.length) {
+    avg_rating = averageMatchRatings(recentMatches, {
+      editionIds: new Set(rows.map((r) => r.edition_id)),
+      teamId: matchOpts?.teamId,
+      phaseIds: matchOpts?.phaseIds,
+    });
+  }
+  if (avg_rating == null) {
+    avg_rating = weightedAvgRating(rows);
+  }
   return {
     ...totals,
-    avg_rating: weightedAvgRating(rows),
+    avg_rating,
   };
 }
 
@@ -333,6 +402,8 @@ function sortCompetitionRows(rows: AthleteEditionStatRow[]): AthleteEditionStatR
 export function groupEditionStatsBySeason(
   rows: AthleteEditionStatRow[],
   kind: HubProfileKind = "athlete",
+  recentMatches?: AthleteRecentMatch[],
+  matchOpts?: MatchRatingAvgOptions,
 ): AthleteStatsSeasonGroup[] {
   const bySeason = new Map<
     string,
@@ -356,13 +427,24 @@ export function groupEditionStatsBySeason(
     const sorted = sortCompetitionRows(stats);
     const lastStat = getLastStatOfSeason(sorted);
     const totals = sumNumeric(sorted, kind);
+    let avg_rating: number | null = null;
+    if (recentMatches?.length) {
+      avg_rating = averageMatchRatings(recentMatches, {
+        editionIds: new Set(sorted.map((r) => r.edition_id)),
+        teamId: matchOpts?.teamId,
+        phaseIds: matchOpts?.phaseIds,
+      });
+    }
+    if (avg_rating == null) {
+      avg_rating = weightedAvgRating(sorted);
+    }
     groups.push({
       key: seasonId,
       seasonName,
       yearValue,
       summary: {
         ...totals,
-        avg_rating: weightedAvgRating(sorted),
+        avg_rating,
       },
       teamLogoUrl: lastStat?.teams?.logo_url ?? null,
       competitions: sorted,

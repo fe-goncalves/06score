@@ -38,10 +38,10 @@ export function ActiveCompetitionGlassCard({
           />
         ) : null}
         <div className="min-w-0 flex-1">
-          <p className="font-display truncate text-sm font-black uppercase leading-tight text-white">
+          <p className="truncate text-sm font-semibold leading-tight text-white">
             {name}
           </p>
-          <p className="font-mono-label mt-0.5 truncate text-[9px] uppercase text-white/45">
+          <p className="mt-0.5 truncate text-[12px] font-medium text-white/45">
             {seasonLabel(competition)}
           </p>
         </div>

@@ -1,73 +1,86 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { OrgImage } from "@/components/ui/OrgImage";
-import { PremiacoesSection } from "@/components/competition/PremiacoesSection";
-import { isEditionClosed } from "@/lib/competition/hubTabs";
 import type {
-  Competition,
-  CompetitionEdition,
   CompetitionEditionDetails,
-  EditionAward,
-  EditionTotsSquad,
+  EditionTeam,
+  PastChampionEntry,
   Team,
 } from "@/lib/types";
 
 interface CompetitionDetailsPanelProps {
-  competition: Competition;
-  currentEdition: CompetitionEdition | null;
   teamCount: number;
   matchCount: number;
   details: CompetitionEditionDetails;
-  awards: EditionAward[];
-  totsSquad: EditionTotsSquad | null;
+  editionTeams: EditionTeam[];
   accentColor?: string | null;
-}
-
-function seasonLabel(edition: CompetitionEdition | null): string {
-  if (!edition) return "—";
-  const seasons = edition.seasons;
-  if (Array.isArray(seasons)) return seasons[0]?.name ?? edition.custom_name ?? "—";
-  return seasons?.name ?? edition.custom_name ?? "—";
-}
-
-function editionStatusLabel(edition: CompetitionEdition | null): string {
-  if (!edition?.status) return "—";
-  const map: Record<string, string> = {
-    active: "Em andamento",
-    finished: "Encerrada",
-    closed: "Encerrada",
-    upcoming: "Em breve",
-  };
-  return map[edition.status] ?? edition.status;
 }
 
 function formatCount(value: number): string {
   return value.toLocaleString("pt-BR");
 }
 
-interface SummaryStatProps {
-  label: string;
-  value: number;
-  sub?: string;
+function unwrapTeam(et: EditionTeam): Team | null {
+  const teams = et.teams;
+  if (!teams) return null;
+  return Array.isArray(teams) ? (teams[0] ?? null) : teams;
 }
 
-function SummaryStat({ label, value, sub }: SummaryStatProps) {
+function RookieBadge() {
+  return (
+    <span className="competition-details-rookie" title="Estreante" aria-label="Estreante">
+      <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden>
+        <path
+          d="M8 1.5l1.8 3.65 4.03.59-2.92 2.84.69 4.02L8 10.7l-3.6 1.9.69-4.02L2.17 5.74l4.03-.59L8 1.5z"
+          fill="currentColor"
+        />
+      </svg>
+    </span>
+  );
+}
+
+function CrownBadge() {
+  return (
+    <span
+      className="competition-details-crown"
+      title="Campeão atual"
+      aria-label="Campeão atual"
+    >
+      <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
+        <path
+          d="M2 11.5l1.5-6L6.2 8 8 3.5 9.8 8l2.7-2.5 1.5 6H2zm0 1.5h12v1.2H2V13z"
+          fill="currentColor"
+        />
+      </svg>
+    </span>
+  );
+}
+
+function SummaryStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="competition-details-stat">
       <span className="competition-details-stat-value">{formatCount(value)}</span>
       <span className="competition-details-stat-label">{label}</span>
-      {sub && <span className="competition-details-stat-sub">{sub}</span>}
     </div>
   );
 }
 
-function TeamLogoChip({ team, size = 44 }: { team: Team; size?: number }) {
-  const teamId = team.id;
-  const label = team.short_name ?? team.abbreviation ?? team.full_name;
+function TeamLogoPlain({
+  team,
+  size = 52,
+  title,
+  badge,
+}: {
+  team: Team;
+  size?: number;
+  title?: string;
+  badge?: "rookie" | "crown" | null;
+}) {
+  const tip = title ?? team.full_name;
   const inner = (
     <span
-      className="competition-details-logo-chip"
-      title={team.full_name}
+      className="competition-details-logo-plain"
+      title={tip}
       style={{ "--logo-size": `${size}px` } as CSSProperties}
     >
       <OrgImage
@@ -75,194 +88,114 @@ function TeamLogoChip({ team, size = 44 }: { team: Team; size?: number }) {
         alt={team.full_name}
         width={size}
         height={size}
-        className="competition-details-logo-chip-img"
+        className="competition-details-logo-plain-img"
       />
+      {badge === "rookie" ? <RookieBadge /> : null}
+      {badge === "crown" ? <CrownBadge /> : null}
     </span>
   );
 
-  if (!teamId) return inner;
+  if (!team.id) return inner;
 
   return (
-    <Link href={`/times/${teamId}`} className="competition-details-logo-link">
+    <Link href={`/times/${team.id}`} className="competition-details-logo-link">
       {inner}
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{team.short_name ?? team.full_name}</span>
     </Link>
   );
 }
 
-function LogoGrid({
-  teams,
-  emptyMessage,
-}: {
-  teams: Team[];
-  emptyMessage: string;
-}) {
-  if (!teams.length) {
-    return (
-      <p className="competition-details-card-empty font-mono-label text-xs text-white/40">
-        {emptyMessage}
-      </p>
-    );
-  }
-
-  return (
-    <div className="competition-details-logo-grid">
-      {teams.map((team, index) => (
-        <TeamLogoChip
-          key={team.id ?? `${team.full_name}-${index}`}
-          team={team}
-        />
-      ))}
-    </div>
-  );
-}
-
 export function CompetitionDetailsPanel({
-  competition,
-  currentEdition,
   teamCount,
   matchCount,
   details,
-  awards,
-  totsSquad,
+  editionTeams,
   accentColor,
 }: CompetitionDetailsPanelProps) {
   const accent = accentColor ?? "var(--color-brand)";
-  const showPremiacoes =
-    isEditionClosed(currentEdition?.status) &&
-    (awards.length > 0 || Boolean(totsSquad));
+  const debutIds = new Set(
+    details.debutTeams.map((t) => t.id).filter(Boolean) as string[],
+  );
+  const defendingId = details.defendingChampion?.id ?? null;
+
+  const participating = editionTeams
+    .map(unwrapTeam)
+    .filter((team): team is Team => team != null);
 
   return (
     <div
-      className="competition-details-layout"
+      className="competition-details-layout competition-details-layout--v2"
       style={{ "--hub-accent": accent } as CSSProperties}
     >
-      {showPremiacoes && (
-        <PremiacoesSection
-          awards={awards}
-          totsSquad={totsSquad}
-          accentColor={accentColor}
-        />
-      )}
-
       <section className="competition-details-section">
-        <h2 className="competition-stats-section-title">Descrição</h2>
+        <h2 className="competition-stats-section-title">
+          Stats da edição atual
+        </h2>
 
-        <article className="competition-details-glass-card competition-details-overview">
-          <div className="competition-details-overview-head">
-            <div>
-              <p className="competition-details-kicker">{competition.full_name}</p>
-              {competition.short_name && (
-                <p className="competition-details-overview-sub">
-                  {competition.short_name}
-                </p>
-              )}
-            </div>
-            <div className="competition-details-overview-meta">
-              <span>{seasonLabel(currentEdition)}</span>
-              <span>{editionStatusLabel(currentEdition)}</span>
-              {currentEdition?.is_current && <span>Edição atual</span>}
-            </div>
-          </div>
+        <div className="competition-details-stats-row">
+          <SummaryStat label="Equipes" value={teamCount} />
+          <SummaryStat label="Partidas" value={matchCount} />
+          <SummaryStat label="Gols" value={details.totalGoals} />
+          <SummaryStat label="Atletas" value={details.totalAthletes} />
+          <SummaryStat label="Cartões" value={details.totalCards} />
+        </div>
 
-          <div className="competition-details-stats-row">
-            <SummaryStat label="Equipes" value={teamCount} sub="inscritas" />
-            <SummaryStat label="Partidas" value={matchCount} sub="na edição" />
-            <SummaryStat label="Gols" value={details.totalGoals} />
-            <SummaryStat label="Atletas" value={details.totalAthletes} sub="inscritos" />
-            <SummaryStat
-              label="Cartões"
-              value={details.totalCards}
-              sub={`${details.totalYellowCards} A · ${details.totalRedCards} V`}
-            />
+        {participating.length > 0 ? (
+          <div className="competition-details-teams-carousel" aria-label="Equipes da edição">
+            {participating.map((team, index) => (
+              <TeamLogoPlain
+                key={team.id ?? `${team.full_name}-${index}`}
+                team={team}
+                size={56}
+                badge={debutIds.has(team.id ?? "") ? "rookie" : null}
+              />
+            ))}
           </div>
-        </article>
+        ) : (
+          <p className="competition-details-card-empty font-mono-label text-xs text-white/40">
+            Nenhuma equipe inscrita.
+          </p>
+        )}
       </section>
 
-      <div className="competition-details-cards-grid">
-        <article className="competition-details-glass-card">
-          <h3 className="competition-details-card-title">Estreantes</h3>
-          <p className="competition-details-card-desc">
-            Equipes que disputam esta competição pela primeira vez.
-          </p>
-          <LogoGrid
-            teams={details.debutTeams}
-            emptyMessage="Nenhuma estreia nesta edição."
-          />
-        </article>
+      <section className="competition-details-section">
+        <h2 className="competition-stats-section-title">Histórico</h2>
 
-        <article className="competition-details-glass-card competition-details-champions-split">
-          <div className="competition-details-champions-col">
-            <h3 className="competition-details-card-title">Campeões</h3>
-            <p className="competition-details-card-desc">
-              Equipes que já conquistaram o título.
-            </p>
-            <LogoGrid
-              teams={details.pastChampions}
-              emptyMessage="Nenhum campeão anterior."
-            />
-          </div>
-
-          <div
-            className="competition-details-champions-divider"
-            aria-hidden="true"
-          />
-
-          <div className="competition-details-champions-col competition-details-champions-current">
-            <h3 className="competition-details-card-title">Campeão atual</h3>
-            <p className="competition-details-card-desc">
-              Título da edição anterior.
-            </p>
-            {details.defendingChampion ? (
-              <div className="competition-details-defending">
-                <TeamLogoChip team={details.defendingChampion} size={56} />
-              </div>
-            ) : (
-              <p className="competition-details-card-empty font-mono-label text-xs text-white/40">
-                Sem edição anterior ou campeão definido.
-              </p>
-            )}
-          </div>
-        </article>
-      </div>
-
-      {details.phaseLeaders.length > 0 && (
-        <section className="competition-details-section">
-          <h2 className="competition-stats-section-title">Fases</h2>
-          <ul className="competition-details-phase-grid">
-            {details.phaseLeaders.map((phase) => (
-              <li
-                key={phase.phaseId}
-                className={`competition-details-phase-card ${phase.isCurrent ? "competition-details-phase-card-current" : ""}`}
-              >
-                <div className="competition-details-phase-info">
-                  <span className="competition-details-phase-name">
-                    {phase.phaseName}
-                  </span>
-                  {phase.isCurrent && (
-                    <span className="competition-details-phase-badge">Atual</span>
-                  )}
-                  {phase.team && phase.points > 0 && (
-                    <span className="competition-details-phase-points">
-                      {phase.points} pts
+        {details.pastChampions.length ? (
+          <ul className="competition-details-history">
+            {details.pastChampions.map((entry: PastChampionEntry) => {
+              const isDefending =
+                defendingId != null && entry.team.id === defendingId;
+              const tip =
+                entry.titleCount > 1
+                  ? `${entry.editionLabel} · ${entry.titleCount} títulos`
+                  : entry.editionLabel;
+              return (
+                <li
+                  key={`${entry.editionId}-${entry.team.id}`}
+                  className="competition-details-history-item"
+                >
+                  <TeamLogoPlain
+                    team={entry.team}
+                    size={64}
+                    title={tip}
+                    badge={isDefending ? "crown" : null}
+                  />
+                  {entry.titleCount > 1 ? (
+                    <span className="competition-details-history-count">
+                      {entry.titleCount}×
                     </span>
-                  )}
-                </div>
-                <div className="competition-details-phase-leader">
-                  {phase.team ? (
-                    <TeamLogoChip team={phase.team} size={40} />
-                  ) : (
-                    <span
-                      className="competition-details-phase-empty"
-                      aria-hidden="true"
-                    />
-                  )}
-                </div>
-              </li>
-            ))}
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
-        </section>
-      )}
+        ) : (
+          <p className="competition-details-card-empty font-mono-label text-xs text-white/40">
+            Nenhum campeão anterior.
+          </p>
+        )}
+      </section>
     </div>
   );
 }

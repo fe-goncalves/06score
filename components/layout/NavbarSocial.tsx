@@ -21,7 +21,7 @@ function SocialIcon({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="text-white/50 transition-colors hover:text-[var(--color-brand)]"
+      className="navbar-social-link"
     >
       {children}
     </a>

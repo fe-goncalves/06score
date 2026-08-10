@@ -1,20 +1,24 @@
 import { enrichMatchupsWithTeams, fetchEditionTeamsForEdition, getPhaseIdsForOrg } from "@/lib/data/shared";
 import { getLatestTotwForEdition } from "@/lib/data/totw";
+import { computeHomePhaseStandings } from "@/lib/home/phaseStandings";
 import { sortNewsByPublishedAt } from "@/lib/home/news";
 import { getSupabase } from "@/lib/supabase";
 import { filterHomeTeams } from "@/lib/home/teams";
 import type {
   Competition,
+  HomeEditionEntry,
   HomeMatches,
   HomeMotw,
-  HomeSponsor,
   HomeTotw,
   Match,
+  MatchRound,
   Matchup,
   Phase,
   HomeEditionData,
   HomeNewsArticle,
+  Season,
   StandingRow,
+  TableMarker,
   Team,
   TeamEditionStats,
   TeamStatLeader,
@@ -25,23 +29,223 @@ function formatDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+function unwrapJoin<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+function editionSeasonName(
+  seasons: Season | Season[] | null | undefined,
+): string | null {
+  if (!seasons) return null;
+  const season = Array.isArray(seasons) ? seasons[0] : seasons;
+  return season?.name ?? null;
+}
+
+function sortHomeEditions(entries: HomeEditionEntry[]): HomeEditionEntry[] {
+  return [...entries].sort(
+    (a, b) =>
+      (b.competitions?.home_priority ?? 0) -
+      (a.competitions?.home_priority ?? 0),
+  );
+}
+
+export async function getHomeEditions(
+  orgId: string,
+): Promise<HomeEditionEntry[]> {
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from("competition_editions")
+    .select(
+      `
+      id, status, show_in_home,
+      seasons(name),
+      competitions!inner (
+        id, full_name, short_name, logo_url,
+        organization_id, gender, primary_color, home_priority
+      )
+    `,
+    )
+    .eq("status", "ongoing")
+    .eq("show_in_home", true)
+    .eq("competitions.organization_id", orgId);
+
+  if (error) {
+    console.error("[getHomeEditions]", error.message);
+    return [];
+  }
+
+  type RawRow = Omit<HomeEditionEntry, "competitions"> & {
+    competitions: HomeEditionEntry["competitions"] | HomeEditionEntry["competitions"][];
+  };
+
+  const rows = (data ?? []) as RawRow[];
+  const normalized: HomeEditionEntry[] = [];
+
+  for (const row of rows) {
+    const comp = unwrapJoin(row.competitions);
+    if (!comp) continue;
+    normalized.push({
+      id: row.id,
+      status: row.status,
+      show_in_home: row.show_in_home,
+      seasons: row.seasons,
+      competitions: comp,
+    });
+  }
+
+  return sortHomeEditions(normalized);
+}
+
+export function homeEditionsToCompetitions(
+  entries: HomeEditionEntry[],
+): Competition[] {
+  return entries.map((entry) => {
+    const comp = entry.competitions;
+    return {
+      id: comp.id,
+      full_name: comp.full_name,
+      short_name: comp.short_name,
+      logo_url: comp.logo_url,
+      primary_color: comp.primary_color,
+      gender: comp.gender,
+      home_priority: comp.home_priority,
+      sport_slug: null,
+      competition_editions: [
+        {
+          id: entry.id,
+          status: entry.status,
+          is_current: true,
+          show_in_home: entry.show_in_home,
+          seasons: entry.seasons,
+        },
+      ],
+    };
+  });
+}
+
+async function getPhaseIdsForEditions(
+  editionIds: string[],
+): Promise<string[]> {
+  if (!editionIds.length) return [];
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("phases")
+    .select("id")
+    .in("edition_id", editionIds);
+
+  if (error) {
+    console.error("[getPhaseIdsForEditions]", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => row.id as string);
+}
+
+export async function getHomeStripMatches(
+  orgId: string,
+  pastDays: number,
+  futureDays: number,
+): Promise<Match[]> {
+  const phaseIds = await getPhaseIdsForOrganization(orgId);
+  if (!phaseIds.length) return [];
+
+  const today = new Date();
+  const fromDate = formatDate(addDays(today, -pastDays));
+  const toDate = formatDate(addDays(today, futureDays));
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("matches")
+    .select(MATCH_SELECT_BASE)
+    .in("phase_id", phaseIds)
+    .not("match_date", "is", null)
+    .gte("match_date", fromDate)
+    .lte("match_date", toDate)
+    .order("match_date", { ascending: true })
+    .order("match_time", { ascending: true, nullsFirst: false });
+
+  if (error) {
+    console.error("[getHomeStripMatches]", error.message);
+    return [];
+  }
+
+  return (data as Match[] | null) ?? [];
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(date.getDate() + days);
+  return next;
+}
+
+async function getPhaseIdsForOrganization(orgId: string): Promise<string[]> {
+  const supabase = getSupabase();
+
+  const { data: competitions, error: compError } = await supabase
+    .from("competitions")
+    .select("id")
+    .eq("organization_id", orgId);
+
+  if (compError || !competitions?.length) {
+    if (compError) {
+      console.error("[getPhaseIdsForOrganization] competitions", compError.message);
+    }
+    return [];
+  }
+
+  const competitionIds = competitions.map((row) => row.id as string);
+
+  const { data: editions, error: editionError } = await supabase
+    .from("competition_editions")
+    .select("id")
+    .in("competition_id", competitionIds);
+
+  if (editionError || !editions?.length) {
+    if (editionError) {
+      console.error("[getPhaseIdsForOrganization] editions", editionError.message);
+    }
+    return [];
+  }
+
+  const editionIds = editions.map((row) => row.id as string);
+
+  const { data: phases, error: phaseError } = await supabase
+    .from("phases")
+    .select("id")
+    .in("edition_id", editionIds);
+
+  if (phaseError) {
+    console.error("[getPhaseIdsForOrganization] phases", phaseError.message);
+    return [];
+  }
+
+  return (phases ?? []).map((row) => row.id as string);
+}
+
+/** @deprecated Use getHomeStripMatches with days from getPublicSiteHomeConfig */
 export async function getRecentAndUpcomingMatches(
   orgId: string,
+  editionIds: string[],
 ): Promise<HomeMatches> {
-  const phaseIds = await getPhaseIdsForOrg(orgId);
+  if (!editionIds.length) return { recent: [], upcoming: [] };
+
+  const phaseIds = await getPhaseIdsForEditions(editionIds);
   if (!phaseIds.length) return { recent: [], upcoming: [] };
 
   const supabase = getSupabase();
   const today = new Date();
   const sevenDaysAgo = new Date(today);
   sevenDaysAgo.setDate(today.getDate() - 7);
-  const thirtyDaysAhead = new Date(today);
-  thirtyDaysAhead.setDate(today.getDate() + 30);
+  const sevenDaysAhead = new Date(today);
+  sevenDaysAhead.setDate(today.getDate() + 7);
 
   const fromRecent = formatDate(sevenDaysAgo);
   const toRecent = formatDate(today);
   const fromUpcoming = formatDate(today);
-  const toUpcoming = formatDate(thirtyDaysAhead);
+  const toUpcoming = formatDate(sevenDaysAhead);
 
   const [recentResult, upcomingResult] = await Promise.all([
     supabase
@@ -123,7 +327,7 @@ export async function getFeaturedNews(orgId: string): Promise<HomeNewsArticle[]>
     .eq("organization_id", orgId)
     .eq("is_published", true)
     .order("published_at", { ascending: false })
-    .limit(10);
+    .limit(15);
 
   if (error) {
     console.error("[getFeaturedNews]", error.message);
@@ -187,68 +391,54 @@ export async function getOrgTeams(orgId: string): Promise<Team[]> {
   return (data as Team[] | null) ?? [];
 }
 
-export async function getOrgSponsors(orgId: string): Promise<HomeSponsor[]> {
-  const supabase = getSupabase();
-
-  const { data, error } = await supabase
-    .from("organization_sponsors")
-    .select("id, name, logo_url, website_url, display_order")
-    .eq("organization_id", orgId)
-    .eq("is_active", true)
-    .order("display_order", { ascending: true });
-
-  if (error) {
-    // Tabela ainda não criada no 06.LAB — seção fica oculta até existir dados.
-    if (error.code !== "PGRST205" && error.code !== "42P01") {
-      console.error("[getOrgSponsors]", error.message);
-    }
-    return [];
-  }
-
-  return (data as HomeSponsor[] | null) ?? [];
-}
-
 export async function getHomeEditionsBundle(
-  competitions: Competition[],
-): Promise<Record<string, HomeEditionData>> {
-  const bundle: Record<string, HomeEditionData> = {};
-
-  await Promise.all(
-    competitions.map(async (comp) => {
-      const editionId = currentEditionId(comp);
-      if (!editionId) return;
-
+  homeEditions: HomeEditionEntry[],
+): Promise<HomeEditionData[]> {
+  const bundle = await Promise.all(
+    homeEditions.map(async (entry) => {
+      const comp = entry.competitions;
+      const editionId = entry.id;
       const currentPhase = await getCurrentPhaseMeta(editionId);
-      const [standings, teams, latestMotw, latestTotw, phaseMatches, phaseMatchups] =
+
+      const [phaseMatches, phaseMatchups, phaseRounds, teamEditionStats, tableMarkers] =
         await Promise.all([
-          getEditionStandings(editionId),
-          getEditionTeams(editionId),
-          getLatestMotwForEdition(editionId),
-          getLatestTotwForEdition(editionId),
           getCurrentPhaseMatches(currentPhase?.id ?? null),
           getCurrentPhaseMatchups(currentPhase),
+          getCurrentPhaseRounds(currentPhase),
+          getTeamEditionStatsRaw(editionId),
+          getPhaseTableMarkers(currentPhase?.id ?? null),
         ]);
 
-      bundle[comp.id] = {
+      const currentPhaseStandings = currentPhase
+        ? computeHomePhaseStandings(
+            currentPhase,
+            phaseMatches,
+            teamEditionStats,
+          )
+        : [];
+
+      return {
         editionId,
         competitionId: comp.id,
-        competitionName: competitionLabel(comp),
-        editionName: currentEditionName(comp),
-        standings,
+        competitionName: comp.short_name ?? comp.full_name,
+        competitionLogoUrl: comp.logo_url,
+        competitionColor: comp.primary_color,
+        homePriority: comp.home_priority ?? 0,
+        editionName: editionSeasonName(entry.seasons),
+        currentPhaseStandings,
+        tableMarkers,
         currentPhaseType: currentPhase?.phase_type ?? null,
         currentPhaseId: currentPhase?.id ?? null,
         currentPhaseName:
           currentPhase?.custom_label ?? currentPhase?.full_name ?? null,
         phaseMatches,
         phaseMatchups,
-        teams,
-        latestMotw,
-        latestTotw,
-      };
+        phaseRounds,
+      } satisfies HomeEditionData;
     }),
   );
 
-  return bundle;
+  return bundle.sort((a, b) => b.homePriority - a.homePriority);
 }
 
 export async function getActiveEditionId(orgId: string): Promise<string | null> {
@@ -323,6 +513,61 @@ export async function getEditionTeams(editionId: string): Promise<Team[]> {
   return filterHomeTeams(teams);
 }
 
+async function getTeamEditionStatsRaw(
+  editionId: string,
+): Promise<TeamEditionStats[]> {
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from("team_edition_stats")
+    .select(
+      `
+      edition_id,
+      team_id,
+      matches_played,
+      wins,
+      draws,
+      losses,
+      goals_scored,
+      goals_conceded,
+      points,
+      yellow_cards,
+      red_cards,
+      teams(id, full_name, short_name, abbreviation, logo_url, primary_color)
+    `,
+    )
+    .eq("edition_id", editionId);
+
+  if (error) {
+    console.error("[getTeamEditionStatsRaw]", error.message);
+    return [];
+  }
+
+  return (data as unknown as TeamEditionStats[]) ?? [];
+}
+
+async function getPhaseTableMarkers(
+  phaseId: string | null,
+): Promise<TableMarker[]> {
+  if (!phaseId) return [];
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("table_markers")
+    .select(
+      "id, phase_id, description, color_hex, show_background, position_from, position_to, display_order",
+    )
+    .eq("phase_id", phaseId)
+    .order("display_order", { ascending: true });
+
+  if (error) {
+    console.error("[getPhaseTableMarkers]", error.message);
+    return [];
+  }
+
+  return (data as TableMarker[] | null) ?? [];
+}
+
 async function getCurrentPhaseMeta(
   editionId: string,
 ): Promise<Phase | null> {
@@ -369,13 +614,42 @@ async function getCurrentPhaseMatchups(
   const { data, error } = await supabase
     .from("matchups")
     .select(
-      "id, phase_id, conference_id, round_label, display_order, is_completed, team_a_id, team_b_id",
+      "id, phase_id, conference_id, round_id, round_label, display_order, is_completed, team_a_id, team_b_id, aggregate_winner_id",
     )
     .eq("phase_id", phase.id)
     .order("display_order", { ascending: true });
 
   if (error) return [];
   return enrichMatchupsWithTeams((data as Matchup[] | null) ?? []);
+}
+
+async function getCurrentPhaseRounds(
+  phase: Phase | null,
+): Promise<MatchRound[]> {
+  if (!phase?.id) return [];
+  if (phase.phase_type !== "knockout" && phase.phase_type !== "conference") {
+    return [];
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("rounds")
+    .select(
+      "id, phase_id, name, custom_label, display_order, is_current, legs, aggregate_score",
+    )
+    .eq("phase_id", phase.id)
+    .order("display_order", { ascending: true });
+
+  if (error) {
+    const { data: fallback } = await supabase
+      .from("rounds")
+      .select("id, phase_id, name, custom_label, display_order")
+      .eq("phase_id", phase.id)
+      .order("display_order", { ascending: true });
+    return (fallback as MatchRound[] | null) ?? [];
+  }
+
+  return (data as MatchRound[] | null) ?? [];
 }
 
 async function getLatestMotwForEdition(

@@ -51,7 +51,7 @@ export function TeamHistoricoTab({ profile }: TeamHistoricoTabProps) {
             {participations.map((row) => {
               const comp = row.competition_editions?.competitions;
               const position = profile.editionPositions[row.edition_id] ?? null;
-              const href = `/times/${profile.team.id}/edicoes/${row.edition_id}`;
+              const href = `/bid/${row.edition_id}/${profile.team.id}?from=time`;
 
               return (
                 <li key={row.edition_id}>

@@ -1,5 +1,5 @@
 import { getSupabase } from "@/lib/supabase";
-import type { EditionAward, Team } from "@/lib/types";
+import type { EditionAward, PastChampionEntry, Team } from "@/lib/types";
 
 const TEAM_SELECT =
   "id, full_name, short_name, abbreviation, logo_url, primary_color";
@@ -72,7 +72,7 @@ export async function fetchEditionAwardsForHub(
 }
 
 export interface CompetitionChampionsData {
-  pastChampions: Team[];
+  pastChampions: PastChampionEntry[];
   defendingChampion: Team | null;
 }
 
@@ -86,6 +86,21 @@ type ChampionAwardRow = {
   edition_id: string;
   winning_team_id: string | null;
 };
+
+type EditionRow = {
+  id: string;
+  created_at?: string | null;
+  custom_name?: string | null;
+  seasons?: { name?: string | null } | { name?: string | null }[] | null;
+};
+
+function editionLabelFromRow(edition: EditionRow): string {
+  const custom = edition.custom_name?.trim();
+  if (custom) return custom;
+  const seasons = edition.seasons;
+  if (Array.isArray(seasons)) return seasons[0]?.name?.trim() || "Edição";
+  return seasons?.name?.trim() || "Edição";
+}
 
 async function fetchAthleteStatTotals(
   editionId: string,
@@ -115,18 +130,6 @@ async function fetchAthleteStatTotals(
   return { totalGoals, totalYellowCards, totalRedCards };
 }
 
-function uniqueTeams(teams: Team[]): Team[] {
-  const seen = new Set<string>();
-  const result: Team[] = [];
-  for (const team of teams) {
-    const id = team.id;
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    result.push(team);
-  }
-  return result;
-}
-
 export async function fetchCompetitionChampions(
   competitionId: string,
   currentEditionId: string,
@@ -135,7 +138,7 @@ export async function fetchCompetitionChampions(
 
   const { data: editions, error: editionsError } = await supabase
     .from("competition_editions")
-    .select("id, created_at")
+    .select("id, created_at, custom_name, seasons(name)")
     .eq("competition_id", competitionId)
     .order("created_at", { ascending: false });
 
@@ -144,7 +147,10 @@ export async function fetchCompetitionChampions(
     return { pastChampions: [], defendingChampion: null };
   }
 
-  const orderedIds = (editions ?? []).map((e) => e.id as string);
+  const editionRows = (editions ?? []) as EditionRow[];
+  const orderedIds = editionRows.map((e) => e.id);
+  const editionById = new Map(editionRows.map((e) => [e.id, e]));
+
   if (!orderedIds.length) {
     return { pastChampions: [], defendingChampion: null };
   }
@@ -182,7 +188,14 @@ export async function fetchCompetitionChampions(
   ];
   const teamsMap = await fetchTeamsMap(teamIds);
 
-  const pastTeams: Team[] = [];
+  const titleCounts = new Map<string, number>();
+  for (const row of rows) {
+    const id = row.winning_team_id;
+    if (!id) continue;
+    titleCounts.set(id, (titleCounts.get(id) ?? 0) + 1);
+  }
+
+  const championByEdition = new Map<string, Team>();
   let defendingChampion: Team | null = null;
 
   for (const row of rows) {
@@ -196,12 +209,26 @@ export async function fetchCompetitionChampions(
     }
 
     if (pastEditionIds.includes(row.edition_id)) {
-      pastTeams.push(team);
+      championByEdition.set(row.edition_id, team);
     }
   }
 
+  const pastChampions: PastChampionEntry[] = pastEditionIds
+    .map((editionId) => {
+      const team = championByEdition.get(editionId);
+      if (!team?.id) return null;
+      const edition = editionById.get(editionId);
+      return {
+        team,
+        editionId,
+        editionLabel: edition ? editionLabelFromRow(edition) : "Edição",
+        titleCount: titleCounts.get(team.id) ?? 1,
+      };
+    })
+    .filter((entry): entry is PastChampionEntry => entry != null);
+
   return {
-    pastChampions: uniqueTeams(pastTeams),
+    pastChampions,
     defendingChampion,
   };
 }

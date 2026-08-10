@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -14,6 +14,7 @@
     "@tiptap/extension-image": "^3.23.5",
     "@tiptap/html": "^3.23.5",
     "@tiptap/starter-kit": "^3.23.5",
+    "country-flag-icons": "^1.6.20",
     "isomorphic-dompurify": "^3.14.0",
     "next": "16.2.6",
     "react": "19.2.4",

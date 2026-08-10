@@ -2,28 +2,31 @@ import type { Metadata } from "next";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
-import {
-  getCachedActiveCompetitions,
-  getCachedOrganization,
-  getCachedOrgTeams,
-} from "@/lib/data/cached";
+import { getCachedOrganization } from "@/lib/data/cached";
+import { metaIcons } from "@/lib/metaIcons";
+import { metaTitle } from "@/lib/metaTitle";
 import { getOrgSlug } from "@/lib/org";
 import "./globals.css";
 
+/** Inter + Space Mono + Poppins (abas do match hub). */
 const GOOGLE_FONTS_URL =
-  "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Space+Grotesk:wght@500;600;700&family=Space+Mono:wght@400;700&family=Barlow:wght@400;500&display=swap";
+  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap";
 
 export async function generateMetadata(): Promise<Metadata> {
   const slug = await getOrgSlug();
   const org = await getCachedOrganization(slug);
 
   if (!org) {
-    return { title: "06.score" };
+    return { title: metaTitle("06.score") };
   }
 
   return {
-    title: org.name,
+    title: {
+      default: metaTitle(org.name),
+      template: "%s",
+    },
     description: org.description ?? `${org.name} — estatísticas, jogos e notícias`,
+    icons: metaIcons(org.logo_url),
   };
 }
 
@@ -41,7 +44,7 @@ export default async function RootLayout({
         <head>
           <link href={GOOGLE_FONTS_URL} rel="stylesheet" />
         </head>
-        <body className="flex min-h-screen items-center justify-center bg-[#080808] font-body text-white/70">
+        <body className="flex min-h-screen items-center justify-center bg-[#0D0D0D] font-sans text-white/70">
           <p className="font-mono-label text-sm">Organização não encontrada.</p>
         </body>
       </html>
@@ -50,11 +53,6 @@ export default async function RootLayout({
 
   const brandColor = org.primary_color ?? "#FF6B00";
   const secondaryColor = org.secondary_color ?? "#888888";
-
-  const [teams, competitions] = await Promise.all([
-    getCachedOrgTeams(org.id),
-    getCachedActiveCompetitions(org.id),
-  ]);
 
   return (
     <html
@@ -69,11 +67,11 @@ export default async function RootLayout({
       <head>
         <link href={GOOGLE_FONTS_URL} rel="stylesheet" />
       </head>
-      <body className="flex min-h-screen flex-col bg-[#080808] font-body text-[#ededed] antialiased">
+      <body className="flex min-h-screen flex-col bg-[#0D0D0D] font-sans text-white antialiased">
         <div className="relative z-[1] flex min-h-screen flex-col">
           <Navbar org={org} />
-          <main className="min-w-0 flex-1 pb-16 md:pb-0">{children}</main>
-          <Footer org={org} teams={teams} competitions={competitions} />
+          <main className="min-w-0 flex-1 pb-[5.5rem] md:pb-0">{children}</main>
+          <Footer org={org} />
           <BottomNav />
         </div>
       </body>

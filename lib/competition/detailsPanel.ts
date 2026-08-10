@@ -3,6 +3,7 @@ import type {
   CompetitionEditionDetails,
   EditionTeam,
   Match,
+  PastChampionEntry,
   Phase,
   Team,
   TeamEditionStats,
@@ -21,7 +22,7 @@ export function buildEditionDetailsPanelData(input: {
   totalGoalsFromAthletes: number;
   totalYellowCards: number;
   totalRedCards: number;
-  pastChampions: Team[];
+  pastChampions: PastChampionEntry[];
   defendingChampion: Team | null;
 }): CompetitionEditionDetails {
   const {

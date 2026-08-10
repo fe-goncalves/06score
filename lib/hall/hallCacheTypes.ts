@@ -3,12 +3,15 @@ export interface HallCacheAthlete {
   full_name: string;
   surname?: string | null;
   photo_url?: string | null;
+  team_logo?: string | null;
+  team_name?: string | null;
 }
 
 export interface HallCacheTeam {
   id: string;
   full_name: string;
   logo_url?: string | null;
+  abbreviation?: string | null;
 }
 
 export interface HallCacheContext {

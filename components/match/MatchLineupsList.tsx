@@ -250,7 +250,12 @@ export function MatchLineupsList({
 }: MatchLineupsListProps) {
   const [mobileTeam, setMobileTeam] = useState<LineupTeamSide>("A");
 
-  const ratingsMap = buildMatchRatingsMap(ratings);
+  const publicRatings =
+    match.ratings_are_public ??
+    match.phases?.competition_editions?.ratings_are_public ??
+    false;
+  const visibleRatings = publicRatings === true ? ratings : [];
+  const ratingsMap = buildMatchRatingsMap(visibleRatings);
   const teamBId = match.team_b_id ?? "";
 
   const { playersA, playersB, staffA, staffB } = splitByTeam(

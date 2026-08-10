@@ -11,6 +11,7 @@ import {
   type HallCustomCategoryDef,
   type TeamStatCategoryDef,
 } from "@/lib/hall/categories";
+import { fetchTeamRankingCategory } from "@/lib/data/teamRanking";
 import {
   canUseHallCache,
   getHallOfFameFromCache,
@@ -34,7 +35,7 @@ import type {
 } from "@/lib/types";
 import { athleteSurnameLabel } from "@/lib/utils";
 
-const TOP_N = 10;
+const TOP_N = 50;
 const MIN_SHOT_ATTEMPTS = 3;
 
 type SupabaseClient = ReturnType<typeof getSupabase>;
@@ -1040,7 +1041,7 @@ async function fetchTeamStatCategory(
   const teamIds = ranked.map((r) => r.team_id);
   const { data: teams } = await supabase
     .from("teams")
-    .select("id, full_name, logo_url, primary_color")
+    .select("id, full_name, logo_url, primary_color, abbreviation")
     .in("id", teamIds)
     .eq("is_virtual", false);
   const teamMap = new Map((teams ?? []).map((t) => [t.id as string, t]));
@@ -1060,6 +1061,7 @@ async function fetchTeamStatCategory(
         name: team?.full_name ?? "—",
         photo_url: team?.logo_url ?? null,
         accent_color: (team?.primary_color as string | null) ?? null,
+        abbreviation: (team?.abbreviation as string | null) ?? null,
         value: r.value,
       };
     }),
@@ -1078,7 +1080,7 @@ async function buildTeamCountCategory(
   const teamIds = sorted.map(([id]) => id);
   const { data: teams } = await supabase
     .from("teams")
-    .select("id, full_name, logo_url, primary_color")
+    .select("id, full_name, logo_url, primary_color, abbreviation")
     .in("id", teamIds)
     .eq("is_virtual", false);
 
@@ -1098,6 +1100,7 @@ async function buildTeamCountCategory(
         name: team?.full_name ?? "—",
         photo_url: team?.logo_url ?? null,
         accent_color: (team?.primary_color as string | null) ?? null,
+        abbreviation: (team?.abbreviation as string | null) ?? null,
         value,
       };
     }),
@@ -1115,7 +1118,7 @@ async function buildStreakEntries(
   const [teamsRes, editionsRes] = await Promise.all([
     supabase
       .from("teams")
-      .select("id, full_name, logo_url, primary_color")
+      .select("id, full_name, logo_url, primary_color, abbreviation")
       .in("id", teamIds)
       .eq("is_virtual", false),
     supabase
@@ -1143,6 +1146,7 @@ async function buildStreakEntries(
         name: t?.full_name ?? "—",
         photo_url: t?.logo_url ?? null,
         accent_color: (t?.primary_color as string | null) ?? null,
+        abbreviation: (t?.abbreviation as string | null) ?? null,
         value: Number(r[valueField]) || 0,
         team_name: editionsMap.get(r.edition_id as string) ?? null,
       };
@@ -1151,145 +1155,54 @@ async function buildStreakEntries(
 
 async function fetchTeamSpecialCategories(
   supabase: SupabaseClient,
-  editionIds: string[],
+  orgId: string,
   teamGenderSet: Set<string> | null,
 ): Promise<HallCategory[]> {
-  if (!editionIds.length) return [];
   const results: HallCategory[] = [];
 
-  const filterStreakRows = (
-    rows: { team_id: string; edition_id: string; [key: string]: unknown }[],
-  ) =>
-    rows.filter((r) => passesTeamGender(r.team_id, teamGenderSet)).slice(0, TOP_N);
+  const { data: careerStats } = await supabase
+    .from("team_career_stats")
+    .select("team_id, total_wins, total_draws")
+    .eq("organization_id", orgId);
 
-  const unbeatenRes = await supabase
-    .from("view_team_unbeaten_streaks")
-    .select("team_id, edition_id, max_unbeaten_streak")
-    .in("edition_id", editionIds)
-    .gt("max_unbeaten_streak", 0)
-    .order("max_unbeaten_streak", { ascending: false })
-    .limit(TOP_N * 4);
+  const pontosList = (careerStats ?? [])
+    .map((r) => ({
+      team_id: r.team_id as string,
+      pts: (Number(r.total_wins) || 0) * 3 + (Number(r.total_draws) || 0),
+    }))
+    .filter((r) => passesTeamGender(r.team_id, teamGenderSet) && r.pts > 0)
+    .sort((a, b) => b.pts - a.pts)
+    .slice(0, TOP_N);
 
-  const unbeatenRows = filterStreakRows(unbeatenRes.data ?? []);
-  if (!unbeatenRes.error && unbeatenRows.length) {
-    const def = HALL_TEAM_SPECIAL_CATEGORIES.find((c) => c.key === "sequencia_invicto")!;
-    results.push({
-      key: def.key,
-      label: def.label,
-      valueLabel: def.valueLabel,
-      section: "teams",
-      entries: await buildStreakEntries(supabase, unbeatenRows, "max_unbeaten_streak"),
-    });
-  }
-
-  const winStreakRes = await supabase
-    .from("view_team_winning_streaks")
-    .select("team_id, edition_id, max_winning_streak")
-    .in("edition_id", editionIds)
-    .gt("max_winning_streak", 0)
-    .order("max_winning_streak", { ascending: false })
-    .limit(TOP_N * 4);
-
-  const winRows = filterStreakRows(winStreakRes.data ?? []);
-  if (!winStreakRes.error && winRows.length) {
-    const def = HALL_TEAM_SPECIAL_CATEGORIES.find((c) => c.key === "sequencia_vitorias")!;
-    results.push({
-      key: def.key,
-      label: def.label,
-      valueLabel: def.valueLabel,
-      section: "teams",
-      entries: await buildStreakEntries(supabase, winRows, "max_winning_streak"),
-    });
-  }
-
-  const { data: csMatchesData } = await supabase
-    .from("matches")
-    .select("team_a_id, team_b_id, score_a, score_b")
-    .eq("status", "finished")
-    .in("edition_id", editionIds)
-    .not("score_a", "is", null)
-    .not("score_b", "is", null);
-
-  if ((csMatchesData ?? []).length) {
-    const csCount = new Map<string, number>();
-    for (const m of csMatchesData ?? []) {
-      const sh = Number(m.score_a) || 0;
-      const sa = Number(m.score_b) || 0;
-      const homeId = m.team_a_id as string | undefined;
-      const awayId = m.team_b_id as string | undefined;
-      if (sa === 0 && homeId && passesTeamGender(homeId, teamGenderSet)) {
-        csCount.set(homeId, (csCount.get(homeId) ?? 0) + 1);
-      }
-      if (sh === 0 && awayId && passesTeamGender(awayId, teamGenderSet)) {
-        csCount.set(awayId, (csCount.get(awayId) ?? 0) + 1);
-      }
-    }
-    const def = HALL_TEAM_SPECIAL_CATEGORIES.find((c) => c.key === "mais_cleansheets")!;
-    const cat = await buildTeamCountCategory(supabase, csCount, def);
-    if (cat) results.push(cat);
-  }
-
-  const { data: matchesData } = await supabase
-    .from("matches")
-    .select("team_a_id, team_b_id, score_a, score_b, edition_id")
-    .eq("status", "finished")
-    .in("edition_id", editionIds)
-    .not("score_a", "is", null)
-    .not("score_b", "is", null);
-
-  if ((matchesData ?? []).length) {
-    type Goleada = { winner: string; loser: string; edition_id: string; diff: number; score: string };
-    const goleadas: Goleada[] = [];
-
-    for (const m of matchesData ?? []) {
-      const sh = Number(m.score_a) || 0;
-      const sa = Number(m.score_b) || 0;
-      const diff = Math.abs(sh - sa);
-      if (diff === 0) continue;
-      const home = m.team_a_id as string;
-      const away = m.team_b_id as string;
-      const [winner, loser, sw, sl] = sh > sa ? [home, away, sh, sa] : [away, home, sa, sh];
-      goleadas.push({
-        winner,
-        loser,
-        edition_id: m.edition_id as string,
-        diff,
-        score: `${sw}×${sl}`,
+  if (pontosList.length) {
+    const pontosTeamIds = pontosList.map((r) => r.team_id);
+    const { data: pontosTeams } = await supabase
+      .from("teams")
+      .select("id, full_name, logo_url, primary_color, abbreviation")
+      .in("id", pontosTeamIds)
+      .eq("is_virtual", false);
+    const pontosTeamMap = new Map((pontosTeams ?? []).map((t) => [t.id as string, t]));
+    const def = HALL_TEAM_SPECIAL_CATEGORIES.find((c) => c.key === "mais_pontos")!;
+    const entries = pontosList
+      .filter((r) => pontosTeamMap.has(r.team_id))
+      .map((r) => {
+        const t = pontosTeamMap.get(r.team_id)!;
+        return {
+          id: r.team_id,
+          name: t.full_name as string,
+          photo_url: t.logo_url as string | null,
+          accent_color: t.primary_color as string | null,
+          abbreviation: (t.abbreviation as string | null) ?? null,
+          value: r.pts,
+        };
       });
-    }
-
-    goleadas.sort((a, b) => b.diff - a.diff);
-    const top = goleadas
-      .filter((g) => passesTeamGender(g.winner, teamGenderSet))
-      .slice(0, TOP_N);
-    if (top.length) {
-      const teamIds = [...new Set(top.flatMap((g) => [g.winner, g.loser]))];
-      const { data: teams } = await supabase
-        .from("teams")
-        .select("id, full_name, logo_url, primary_color")
-        .in("id", teamIds)
-        .eq("is_virtual", false);
-      const teamMap = new Map((teams ?? []).map((t) => [t.id as string, t]));
-      const topReal = top.filter((g) => teamMap.has(g.winner));
-      if (!topReal.length) return results;
-
-      const def = HALL_TEAM_SPECIAL_CATEGORIES.find((c) => c.key === "maior_goleada")!;
+    if (entries.length) {
       results.push({
         key: def.key,
         label: def.label,
         valueLabel: def.valueLabel,
         section: "teams",
-        entries: topReal.map((g) => {
-          const winner = teamMap.get(g.winner);
-          return {
-            id: g.winner,
-            name: winner?.full_name ?? "—",
-            photo_url: winner?.logo_url ?? null,
-            accent_color: (winner?.primary_color as string | null) ?? null,
-            value: g.diff,
-            team_name: `${g.score} vs ${teamMap.get(g.loser)?.full_name ?? "—"}`,
-          };
-        }),
+        entries,
       });
     }
   }
@@ -1306,16 +1219,13 @@ export async function fetchHallAthletes(
   const goalkeeperIds = await fetchGoalkeeperIds(supabase);
 
   const statCats = await Promise.all(
-    HALL_ATHLETE_STAT_CATEGORIES.filter((c) => c.key !== "gk_penalty_saves").map((cat) =>
+    HALL_ATHLETE_STAT_CATEGORIES.map((cat) =>
       fetchAthleteStatCategory(supabase, orgId, cat, ctx, goalkeeperIds),
     ),
   );
 
   const customCats = await Promise.all([
-    fetchGoalsInMatch(supabase, ctx),
     fetchGoalParticipation(supabase, orgId, ctx),
-    fetchRateCategory(supabase, orgId, ctx, "penalty"),
-    fetchRateCategory(supabase, orgId, ctx, "shootout"),
     ctx.awardEditionIds.length
       ? fetchAthleteTitles(supabase, ctx.awardEditionIds, ctx.athleteGenderSet)
       : Promise.resolve(null),
@@ -1327,15 +1237,6 @@ export async function fetchHallAthletes(
       : Promise.resolve(null),
     ctx.awardEditionIds.length
       ? fetchGkCleanSheets(
-          supabase,
-          ctx.awardEditionIds,
-          goalkeeperIds,
-          ctx.athleteGenderSet,
-        )
-      : Promise.resolve(null),
-    fetchGkPenaltySaves(supabase, orgId, ctx, goalkeeperIds),
-    ctx.awardEditionIds.length
-      ? fetchGkShootoutSaves(
           supabase,
           ctx.awardEditionIds,
           goalkeeperIds,
@@ -1356,24 +1257,21 @@ export async function fetchHallTeams(
 ): Promise<HallCategory[]> {
   const supabase = getSupabase();
   const ctx = await buildHallQueryContext(orgId, filters);
-  const specialEditionIds = ctx.useEditionStats
-    ? ctx.editionIds
-    : await getOrgEditionIds(orgId);
 
-  const statCats = await Promise.all(
-    HALL_TEAM_STAT_CATEGORIES.map((cat) =>
-      fetchTeamStatCategory(supabase, orgId, cat, ctx),
+  const [ranking, statCats, specialCats] = await Promise.all([
+    fetchTeamRankingCategory(orgId, filters),
+    Promise.all(
+      HALL_TEAM_STAT_CATEGORIES.map((cat) =>
+        fetchTeamStatCategory(supabase, orgId, cat, ctx),
+      ),
     ),
-  );
-
-  const specialCats = await fetchTeamSpecialCategories(
-    supabase,
-    specialEditionIds,
-    ctx.teamGenderSet,
-  );
+    fetchTeamSpecialCategories(supabase, orgId, ctx.teamGenderSet),
+  ]);
 
   return sortHallCategories(
-    [...specialCats, ...statCats.filter(Boolean)].filter((c): c is HallCategory => c != null),
+    [ranking, ...specialCats, ...statCats.filter(Boolean)].filter(
+      (c): c is HallCategory => c != null,
+    ),
     HALL_TEAM_CATEGORY_ORDER,
   );
 }
@@ -1412,10 +1310,21 @@ export async function getHallData(
       if (tab === "athletes") {
         return { athletes: fromCache.athletes, teams: [], staff: [] };
       }
+
+      // Ranking de equipes vem do ledger (igual ao app), não do cache de stats
+      const ranking = await fetchTeamRankingCategory(orgId, filters);
+      const teams = sortHallCategories(
+        [
+          ranking,
+          ...fromCache.teams.filter((c) => c.key !== "team_ranking"),
+        ],
+        HALL_TEAM_CATEGORY_ORDER,
+      );
+
       if (tab === "teams") {
-        return { athletes: [], teams: fromCache.teams, staff: [] };
+        return { athletes: [], teams, staff: [] };
       }
-      return fromCache;
+      return { ...fromCache, teams };
     }
   }
 
@@ -1425,18 +1334,26 @@ export async function getHallData(
 export async function getHallFilterOptions(orgId: string): Promise<import("@/lib/types").HallFilterOptions> {
   const supabase = getSupabase();
 
-  const { data: competitions } = await supabase
-    .from("competitions")
-    .select("id, full_name, short_name, gender, logo_url")
-    .eq("organization_id", orgId)
-    .order("full_name");
+  const [{ data: competitions }, { data: teamsRaw }] = await Promise.all([
+    supabase
+      .from("competitions")
+      .select("id, full_name, short_name, gender, logo_url")
+      .eq("organization_id", orgId)
+      .order("full_name"),
+    supabase
+      .from("teams")
+      .select("id, full_name, short_name, abbreviation, logo_url, gender")
+      .eq("organization_id", orgId)
+      .eq("is_virtual", false)
+      .order("full_name", { ascending: true }),
+  ]);
 
   const compIds = (competitions ?? []).map((c) => c.id as string);
 
   const { data: editionsRaw } = compIds.length
     ? await supabase
         .from("competition_editions")
-        .select("id, competition_id, seasons ( name, years ( value ) )")
+        .select("id, competition_id, custom_name, seasons ( name, years ( value ) )")
         .in("competition_id", compIds)
     : { data: [] };
 
@@ -1452,6 +1369,7 @@ export async function getHallFilterOptions(orgId: string): Promise<import("@/lib
       id: e.id as string,
       competition_id: e.competition_id as string,
       season_name: season?.name ?? "",
+      custom_name: (e.custom_name as string | null) ?? null,
       year: yearRow?.value != null ? Number(yearRow.value) : null,
     };
   });
@@ -1474,6 +1392,14 @@ export async function getHallFilterOptions(orgId: string): Promise<import("@/lib
     })),
     editions,
     years,
+    teams: (teamsRaw ?? []).map((team) => ({
+      id: team.id as string,
+      full_name: team.full_name as string,
+      short_name: (team.short_name as string | null) ?? null,
+      abbreviation: (team.abbreviation as string | null) ?? null,
+      logo_url: (team.logo_url as string | null) ?? null,
+      gender: (team.gender as string | null) ?? null,
+    })),
   };
 }
 

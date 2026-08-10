@@ -1,32 +1,30 @@
 import type { TabItem } from "@/components/ui/PageTabs";
 
+export const ATHLETE_TAB_RESUMO = "resumo";
 export const ATHLETE_TAB_PARTIDAS = "partidas";
+export const ATHLETE_TAB_ESTATISTICAS = "estatisticas";
 
-export const ATHLETE_TABS_DESKTOP: TabItem[] = [
-  { id: "informacoes", label: "INFORMAÇÕES" },
-  { id: "historico", label: "HISTÓRICO" },
-  { id: "estatisticas", label: "ESTATÍSTICAS" },
-];
-
-export const ATHLETE_TABS_MOBILE: TabItem[] = [
-  ...ATHLETE_TABS_DESKTOP.slice(0, 1),
+export const ATHLETE_TABS: TabItem[] = [
+  { id: ATHLETE_TAB_RESUMO, label: "RESUMO" },
   { id: ATHLETE_TAB_PARTIDAS, label: "PARTIDAS" },
-  ...ATHLETE_TABS_DESKTOP.slice(1),
+  { id: ATHLETE_TAB_ESTATISTICAS, label: "ESTATÍSTICAS" },
 ];
 
-/** @deprecated use ATHLETE_TABS_DESKTOP */
-export const ATHLETE_TABS = ATHLETE_TABS_DESKTOP;
+export const DEFAULT_ATHLETE_TAB = ATHLETE_TAB_RESUMO;
 
-export const DEFAULT_ATHLETE_TAB = "informacoes";
+const TAB_IDS = new Set(ATHLETE_TABS.map((t) => t.id));
 
-const DESKTOP_IDS = new Set(ATHLETE_TABS_DESKTOP.map((t) => t.id));
-const MOBILE_IDS = new Set(ATHLETE_TABS_MOBILE.map((t) => t.id));
+/** URLs antigas → abas atuais do app. */
+const LEGACY_TAB_ALIASES: Record<string, string> = {
+  informacoes: ATHLETE_TAB_RESUMO,
+  historico: ATHLETE_TAB_RESUMO,
+};
 
-export function resolveAthleteTab(tab: string, isMobile = false): string {
-  const allowed = isMobile ? MOBILE_IDS : DESKTOP_IDS;
-  return allowed.has(tab) ? tab : DEFAULT_ATHLETE_TAB;
+export function resolveAthleteTab(tab: string, _isMobile = false): string {
+  const normalized = LEGACY_TAB_ALIASES[tab] ?? tab;
+  return TAB_IDS.has(normalized) ? normalized : DEFAULT_ATHLETE_TAB;
 }
 
-export function athleteTabsForViewport(isMobile: boolean): TabItem[] {
-  return isMobile ? ATHLETE_TABS_MOBILE : ATHLETE_TABS_DESKTOP;
+export function athleteTabsForViewport(_isMobile: boolean): TabItem[] {
+  return ATHLETE_TABS;
 }

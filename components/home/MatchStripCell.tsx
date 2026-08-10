@@ -1,47 +1,94 @@
 import Link from "next/link";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import type { Match } from "@/lib/types";
-import { isMatchFinished, isMatchLive } from "@/lib/utils";
+import { formatMatchStripDate, isMatchFinished, isMatchLive } from "@/lib/utils";
 
 interface MatchStripCellProps {
   match: Match;
   index: number;
 }
 
+function teamSigla(team: Match["teams_a"]): string {
+  if (!team) return "—";
+  return (
+    team.abbreviation?.trim() ||
+    team.short_name?.trim()?.slice(0, 3).toUpperCase() ||
+    team.full_name?.slice(0, 3).toUpperCase() ||
+    "—"
+  );
+}
+
+function resolveDimmed(match: Match, finished: boolean) {
+  if (
+    finished &&
+    match.score_a != null &&
+    match.score_b != null &&
+    match.score_a !== match.score_b
+  ) {
+    return {
+      aDimmed: match.score_a < match.score_b,
+      bDimmed: match.score_b < match.score_a,
+    };
+  }
+  return { aDimmed: false, bDimmed: false };
+}
+
 export function MatchStripCell({ match, index }: MatchStripCellProps) {
   const finished = isMatchFinished(match.status);
   const live = isMatchLive(match.status);
-  const teamA = match.teams_a;
-  const teamB = match.teams_b;
+  const showScore = finished || live;
+  const { aDimmed, bDimmed } = resolveDimmed(match, finished);
 
   return (
     <Link
       href={`/jogos/${match.id}`}
-      className={`match-strip-cell ${live ? "match-strip-cell-live" : ""}`}
+      className={`match-strip-cell${live ? " match-strip-cell-live" : ""}`}
     >
       <div className="match-strip-cell-inner">
-        <TeamLogo team={teamA} index={index * 2} size={32} className="shrink-0" />
+        <span
+          className={`match-strip-sigla match-strip-sigla-a${aDimmed ? " is-dimmed" : ""}`}
+        >
+          {teamSigla(match.teams_a)}
+        </span>
+        <TeamLogo
+          team={match.teams_a}
+          index={index * 2}
+          size={28}
+          className="match-strip-logo shrink-0"
+        />
 
         <div className="match-strip-center">
-          {finished || live ? (
+          {showScore ? (
             <span
-              className={`match-strip-score font-mono-label tabular-nums ${live ? "text-[var(--color-brand)]" : "text-white"}`}
+              className={`match-strip-score tabular-nums${live ? " is-live" : ""}`}
             >
-              {match.score_a ?? 0}
-              <span className="mx-1.5 text-white/30">-</span>
-              {match.score_b ?? 0}
+              <span className={aDimmed ? "is-dimmed" : undefined}>
+                {match.score_a ?? 0}
+              </span>
+              <span className="match-strip-score-sep">:</span>
+              <span className={bDimmed ? "is-dimmed" : undefined}>
+                {match.score_b ?? 0}
+              </span>
             </span>
           ) : (
-            <span className="match-strip-score font-mono-label text-[var(--color-brand)]">
-              {match.match_time?.slice(0, 5) ?? "—"}
+            <span className="match-strip-score match-strip-score-date">
+              {formatMatchStripDate(match.match_date)}
             </span>
           )}
-          {live && (
-            <span className="match-strip-live font-mono-label">LIVE</span>
-          )}
+          {live ? <span className="match-strip-live">LIVE</span> : null}
         </div>
 
-        <TeamLogo team={teamB} index={index * 2 + 1} size={32} className="shrink-0" />
+        <TeamLogo
+          team={match.teams_b}
+          index={index * 2 + 1}
+          size={28}
+          className="match-strip-logo shrink-0"
+        />
+        <span
+          className={`match-strip-sigla match-strip-sigla-b${bDimmed ? " is-dimmed" : ""}`}
+        >
+          {teamSigla(match.teams_b)}
+        </span>
       </div>
     </Link>
   );

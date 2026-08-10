@@ -1,21 +1,26 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useEffect } from "react";
 import { AthleteHubHeader } from "@/components/athlete/AthleteHubHeader";
 import { AthleteEstatisticasTab } from "@/components/athlete/AthleteEstatisticasTab";
-import { AthleteHistoricoTab } from "@/components/athlete/AthleteHistoricoTab";
-import { AthleteInfoTab } from "@/components/athlete/AthleteInfoTab";
+import {
+  AthleteResumoTab,
+  athleteRoleFromProfile,
+  buildAthleteResumoStats,
+  buildStaffResumoStats,
+} from "@/components/athlete/AthleteResumoTab";
 import { AthleteMatchesList } from "@/components/athlete/AthleteMatchesList";
 import {
+  ATHLETE_TAB_ESTATISTICAS,
   ATHLETE_TAB_PARTIDAS,
+  ATHLETE_TAB_RESUMO,
   DEFAULT_ATHLETE_TAB,
   athleteTabsForViewport,
   resolveAthleteTab,
 } from "@/lib/athlete/athleteTabs";
 import { useAthleteDesktopLayout } from "@/lib/hooks/useMediaQuery";
 import { useClientTab } from "@/lib/navigation/useClientTab";
-import type { AthleteProfileData } from "@/lib/types";
+import type { AthleteProfileData, AthleteCareerStats, StaffCareerStats } from "@/lib/types";
 
 function calcAge(birthDate: string | null | undefined): number | null {
   if (!birthDate) return null;
@@ -39,22 +44,37 @@ export function AthletePageClient({ profile }: AthletePageClientProps) {
   const activeTab = resolveAthleteTab(tab, !isDesktop);
   const headerTabs = athleteTabsForViewport(!isDesktop);
 
-  useEffect(() => {
-    if (isDesktop && tab === ATHLETE_TAB_PARTIDAS) {
-      setTab(DEFAULT_ATHLETE_TAB);
-    }
-  }, [isDesktop, tab, setTab]);
-
   const currentStint =
     profile.stints.find((s) => s.is_current) ?? profile.stints[0] ?? null;
   const birthDate = (profile.athlete as { birth_date?: string | null }).birth_date;
   const age = calcAge(birthDate);
   const accent = currentStint?.teams?.primary_color ?? "var(--color-brand)";
+  const roleLabel = athleteRoleFromProfile(profile.athlete.player_positions);
+
+  const resumoStats =
+    profileKind === "staff"
+      ? buildStaffResumoStats(
+          (profile.careerStats as StaffCareerStats | null) ?? null,
+          profile.careerSummary.matches,
+        )
+      : buildAthleteResumoStats(
+          (profile.careerStats as AthleteCareerStats | null) ?? null,
+          profile.editionStats,
+          {
+            matches: profile.careerSummary.matches,
+            goals: profile.careerSummary.goals,
+            assists: profile.careerSummary.assists,
+          },
+        );
 
   const matchesAside = (
     <AthleteMatchesList
       matches={profile.recentMatches}
-      className={isDesktop ? "athlete-matches-panel--aside" : undefined}
+      className={
+        isDesktop && activeTab !== ATHLETE_TAB_PARTIDAS
+          ? "athlete-matches-panel--aside"
+          : undefined
+      }
     />
   );
 
@@ -91,18 +111,23 @@ export function AthletePageClient({ profile }: AthletePageClientProps) {
       <div className="athlete-page-panel">
         <div className="athlete-page-layout">
           <div className="athlete-page-main">
-            {activeTab === "informacoes" && <AthleteInfoTab profile={profile} />}
-
-            {activeTab === ATHLETE_TAB_PARTIDAS && !isDesktop && matchesAside}
-
-            {activeTab === "historico" && (
-              <AthleteHistoricoTab
+            {activeTab === ATHLETE_TAB_RESUMO && (
+              <AthleteResumoTab
                 stints={profile.stints}
-                rosterEntries={profile.rosterEntries}
+                nationality={profile.athlete.nationality}
+                birthDate={birthDate}
+                roleLabel={roleLabel}
+                roleTitle={profileKind === "staff" ? "Função" : "Posição"}
+                accent={accent}
+                stats={resumoStats}
+                teamAwards={profile.teamAwards}
+                awards={profile.awards}
               />
             )}
 
-            {activeTab === "estatisticas" && (
+            {activeTab === ATHLETE_TAB_PARTIDAS && matchesAside}
+
+            {activeTab === ATHLETE_TAB_ESTATISTICAS && (
               <AthleteEstatisticasTab
                 editionStats={profile.editionStats}
                 careerStats={profile.careerStats}
@@ -114,7 +139,7 @@ export function AthletePageClient({ profile }: AthletePageClientProps) {
             )}
           </div>
 
-          {isDesktop && (
+          {isDesktop && activeTab !== ATHLETE_TAB_PARTIDAS && (
             <aside className="athlete-page-aside" aria-label="Partidas recentes">
               {matchesAside}
             </aside>

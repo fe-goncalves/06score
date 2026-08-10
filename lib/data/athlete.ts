@@ -30,6 +30,42 @@ function chunkIds(ids: string[], size: number): string[][] {
   return chunks;
 }
 
+function unwrapTeam(
+  raw: AthleteListItem["current_team"] | AthleteListItem["current_team"][] | null | undefined,
+): AthleteListItem["current_team"] {
+  if (!raw) return null;
+  return Array.isArray(raw) ? (raw[0] ?? null) : raw;
+}
+
+/** Prefere stint atual; senão ativo sem fim; senão o mais recente. */
+function resolveCurrentTeamFromStints(
+  stints:
+    | {
+        is_current: boolean | null;
+        is_active?: boolean | null;
+        started_at?: string | null;
+        ended_at?: string | null;
+        teams: AthleteListItem["current_team"] | AthleteListItem["current_team"][];
+      }[]
+    | null
+    | undefined,
+): AthleteListItem["current_team"] {
+  if (!stints?.length) return null;
+
+  const markedCurrent = stints.find((stint) => stint.is_current);
+  if (markedCurrent) return unwrapTeam(markedCurrent.teams);
+
+  const openActive = stints.filter(
+    (stint) => stint.is_active !== false && !stint.ended_at,
+  );
+  const pool = openActive.length ? openActive : stints;
+  const sorted = [...pool].sort((a, b) =>
+    (b.started_at ?? "").localeCompare(a.started_at ?? ""),
+  );
+
+  return unwrapTeam(sorted[0]?.teams);
+}
+
 const MATCH_FOR_ATHLETE_SELECT = `
   ${MATCH_SELECT_BASE},
   motm_athlete_id
@@ -46,9 +82,13 @@ export async function getAthletesList(orgId: string): Promise<AthleteListItem[]>
       full_name,
       surname,
       photo_url,
+      player_positions(full_name, abbreviation),
       athlete_team_stints(
         is_current,
-        teams(full_name, short_name, logo_url, abbreviation)
+        is_active,
+        started_at,
+        ended_at,
+        teams(id, full_name, short_name, logo_url, abbreviation, primary_color)
       )
     `,
     )
@@ -62,15 +102,22 @@ export async function getAthletesList(orgId: string): Promise<AthleteListItem[]>
 
   return (data ?? []).map((row) => {
     const stintsRaw = row.athlete_team_stints as unknown as
-      | { is_current: boolean; teams: AthleteListItem["current_team"] }[]
+      | {
+          is_current: boolean | null;
+          is_active?: boolean | null;
+          started_at?: string | null;
+          ended_at?: string | null;
+          teams: AthleteListItem["current_team"] | AthleteListItem["current_team"][];
+        }[]
       | null;
-    const current = (stintsRaw ?? []).find((s) => s.is_current);
+
     return {
       id: row.id as string,
       full_name: row.full_name as string,
       surname: row.surname as string | null,
       photo_url: row.photo_url as string | null,
-      current_team: current?.teams ?? null,
+      player_positions: row.player_positions as AthleteListItem["player_positions"],
+      current_team: resolveCurrentTeamFromStints(stintsRaw),
     };
   });
 }
@@ -147,6 +194,7 @@ export async function getAthleteProfile(
         winning_team_id,
         edition_id,
         competition_editions (
+          custom_name,
           competitions ( id, full_name, short_name, logo_url ),
           seasons ( name )
         ),
@@ -335,6 +383,7 @@ export async function getAthleteProfile(
               ...match.phases,
               edition_id: match.phases.edition_id ?? resolvedEditionId,
               competition_editions: {
+                ...match.phases.competition_editions,
                 id: resolvedEditionId,
                 competitions:
                   match.phases.competition_editions?.competitions ?? null,

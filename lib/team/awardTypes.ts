@@ -34,7 +34,8 @@ export function teamAwardLabel(value: string): string {
 export function teamGenderLabel(gender: string | null | undefined): string {
   if (!gender?.trim()) return "—";
   const g = gender.trim().toLowerCase();
-  if (g === "male" || g === "m") return "Masculino";
-  if (g === "female" || g === "f") return "Feminino";
+  if (g === "male" || g === "m" || g === "masculino") return "Masculino";
+  if (g === "female" || g === "f" || g === "feminino") return "Feminino";
+  if (g === "mixed" || g === "misto" || g === "mix") return "Misto";
   return gender;
 }

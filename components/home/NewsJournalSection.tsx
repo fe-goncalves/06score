@@ -1,17 +1,9 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
-import { BracketView } from "@/components/competition/BracketView";
-import { StandingsTable } from "@/components/competition/StandingsTable";
+import { HomeRoundMatchesPanel } from "@/components/home/HomeRoundMatchesPanel";
 import { OrgImage } from "@/components/ui/OrgImage";
 import { SectionEnter } from "@/components/ui/SectionEnter";
 import { getJournalNews, HERO_NEWS_COUNT } from "@/lib/home/news";
-import type {
-  HomeNewsArticle,
-  Match,
-  Matchup,
-  Phase,
-  StandingRow,
-} from "@/lib/types";
+import type { HomeNewsArticle, Match, Matchup } from "@/lib/types";
 
 interface NewsJournalSectionProps {
   articles: HomeNewsArticle[];
@@ -21,8 +13,7 @@ interface NewsJournalSectionProps {
   competitionLogoUrl: string | null;
   editionName: string | null;
   phaseName: string | null;
-  standings: StandingRow[];
-  currentPhaseType: Phase["phase_type"] | null;
+  phaseId: string | null;
   phaseMatches: Match[];
   phaseMatchups: Matchup[];
   /** Quantas notícias o hero já exibe (evita repetir no grid) */
@@ -104,65 +95,6 @@ function VerMaisLink() {
   );
 }
 
-function CompetitionPreviewPanel({
-  competitionId,
-  competitionName,
-  competitionColor,
-  competitionLogoUrl,
-  editionName,
-  phaseName,
-  standings,
-  currentPhaseType,
-  phaseMatches,
-  phaseMatchups,
-}: Omit<NewsJournalSectionProps, "articles" | "skipCount">) {
-  return (
-    <aside
-      className="news-side-panel card-surface min-w-0 overflow-hidden rounded-lg border border-white/[0.06] p-3"
-      style={
-        {
-          "--news-panel-color": competitionColor ?? "var(--color-brand)",
-        } as CSSProperties
-      }
-    >
-      <Link
-        href={competitionId ? `/competicoes/${competitionId}` : "/competicoes"}
-        className="news-side-competition group mb-3 flex items-center gap-3 rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2.5"
-      >
-        {competitionLogoUrl ? (
-          <OrgImage
-            src={competitionLogoUrl}
-            alt={competitionName || "Competição"}
-            width={32}
-            height={32}
-            className="h-8 w-8 shrink-0 object-contain transition-transform duration-300 group-hover:scale-110"
-          />
-        ) : null}
-        <div className="min-w-0">
-          <p className="font-mono-label text-[8px] uppercase tracking-[0.14em] text-white/45">
-            {editionName ?? competitionName ?? "Edição atual"}
-          </p>
-          <p className="font-display truncate text-sm font-black uppercase text-white">
-            {phaseName ?? "Fase atual"}
-          </p>
-        </div>
-      </Link>
-      <div className="news-side-panel-scroll">
-        {currentPhaseType === "conference" || currentPhaseType === "knockout" ? (
-          <BracketView matchups={phaseMatchups} matches={phaseMatches} />
-        ) : (
-          <StandingsTable
-            rows={standings}
-            embedded
-            maxRows={8}
-            accentColor={competitionColor}
-          />
-        )}
-      </div>
-    </aside>
-  );
-}
-
 export function NewsJournalSection({
   articles,
   competitionId,
@@ -171,8 +103,7 @@ export function NewsJournalSection({
   competitionLogoUrl,
   editionName,
   phaseName,
-  standings,
-  currentPhaseType,
+  phaseId,
   phaseMatches,
   phaseMatchups,
   skipCount = HERO_NEWS_COUNT,
@@ -181,9 +112,9 @@ export function NewsJournalSection({
   const mobileItems = getJournalNews(articles, MOBILE_NEWS_LIMIT, skipCount);
   const hasDesktopJournal = desktopItems.length > 0;
   const hasMobileJournal = mobileItems.length > 0;
-  const showCompetitionPanel = Boolean(competitionId);
+  const showMatchesPanel = Boolean(competitionId);
 
-  if (!hasDesktopJournal && !hasMobileJournal && !showCompetitionPanel) {
+  if (!hasDesktopJournal && !hasMobileJournal && !showMatchesPanel) {
     return null;
   }
 
@@ -198,8 +129,7 @@ export function NewsJournalSection({
     competitionLogoUrl,
     editionName,
     phaseName,
-    standings,
-    currentPhaseType,
+    phaseId,
     phaseMatches,
     phaseMatchups,
   };
@@ -207,14 +137,13 @@ export function NewsJournalSection({
   return (
     <SectionEnter className="news-journal-section py-8 md:py-10">
       <div className="page-container min-w-0">
-        {/* Mobile: scroll horizontal — prévia + notícias em lista */}
-        {(showCompetitionPanel || hasMobileJournal) && (
+        {(showMatchesPanel || hasMobileJournal) && (
           <div className="news-journal-mobile md:hidden">
             <div className="news-journal-mobile-scroll">
               <div className="news-journal-mobile-track">
-                {showCompetitionPanel ? (
+                {showMatchesPanel ? (
                   <div className="news-journal-mobile-panel">
-                    <CompetitionPreviewPanel {...panelProps} />
+                    <HomeRoundMatchesPanel {...panelProps} />
                   </div>
                 ) : null}
                 {hasMobileJournal ? (
@@ -241,10 +170,9 @@ export function NewsJournalSection({
           </div>
         )}
 
-        {/* Desktop: grid jornal + painel */}
         <div
           className={`hidden md:grid md:gap-4 md:items-start ${
-            hasDesktopJournal && showCompetitionPanel
+            hasDesktopJournal && showMatchesPanel
               ? "md:grid-cols-[minmax(0,1fr)_360px]"
               : ""
           }`}
@@ -284,9 +212,9 @@ export function NewsJournalSection({
             </div>
           ) : null}
 
-          {showCompetitionPanel ? (
+          {showMatchesPanel ? (
             <div className={hasDesktopJournal ? "min-w-0" : "max-w-lg"}>
-              <CompetitionPreviewPanel {...panelProps} />
+              <HomeRoundMatchesPanel {...panelProps} />
             </div>
           ) : null}
         </div>
