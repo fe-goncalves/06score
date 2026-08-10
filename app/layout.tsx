@@ -26,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
       template: "%s",
     },
     description: org.description ?? `${org.name} — estatísticas, jogos e notícias`,
-    icons: metaIcons(org.logo_url),
+    icons: metaIcons(),
   };
 }
 

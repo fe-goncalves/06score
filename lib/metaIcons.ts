@@ -10,16 +10,23 @@ function iconMime(url: string): string | undefined {
   return undefined;
 }
 
+const DEFAULT_ICON: NonNullable<Metadata["icons"]> = {
+  icon: [{ url: "/icon", type: "image/png" }],
+  shortcut: [{ url: "/icon" }],
+  apple: [{ url: "/icon" }],
+};
+
 /**
- * Favicon da aba: logo da entidade quando houver;
- * senão fallback (logo da organização).
+ * Favicon da aba:
+ * - com logo da entidade → usa essa URL
+ * - senão → `/icon` (logo da organização via app/icon.tsx)
  */
 export function metaIcons(
   entityLogo?: string | null,
-  orgLogo?: string | null,
-): Metadata["icons"] | undefined {
-  const url = entityLogo?.trim() || orgLogo?.trim() || null;
-  if (!url) return undefined;
+  _orgLogo?: string | null,
+): Metadata["icons"] {
+  const url = entityLogo?.trim() || null;
+  if (!url) return DEFAULT_ICON;
 
   const type = iconMime(url);
   return {
