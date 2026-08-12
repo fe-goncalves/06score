@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Links antigos / partidas → rota atual /jogos
@@ -17,7 +17,10 @@ export function proxy(request: NextRequest) {
   if (
     hostname === "localhost" ||
     hostname === "127.0.0.1" ||
-    hostname.endsWith(".localhost")
+    hostname.endsWith(".localhost") ||
+    // Cloudflare preview hosts — use NEXT_PUBLIC_ORG_SLUG, not worker name as org
+    hostname.endsWith(".workers.dev") ||
+    hostname.endsWith(".pages.dev")
   ) {
     return NextResponse.next();
   }
