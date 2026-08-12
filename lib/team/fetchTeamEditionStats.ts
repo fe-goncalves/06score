@@ -17,6 +17,7 @@ const EDITION_STATS_JOINED_SELECT = `
     id,
     season_id,
     competition_id,
+    custom_name,
     seasons!inner (
       id,
       name,
@@ -93,6 +94,7 @@ function normalizeEditionStatRow(raw: RawStat): TeamEditionStatRow | null {
           id: editionRaw.id as string,
           season_id: (editionRaw.season_id as string | null) ?? null,
           competition_id: (editionRaw.competition_id as string | null) ?? null,
+          custom_name: (editionRaw.custom_name as string | null) ?? null,
           seasons,
           competitions,
         }
@@ -125,7 +127,7 @@ async function fetchTeamEditionStatsFallback(
     .from("competition_editions")
     .select(
       `
-        id, season_id, competition_id,
+        id, season_id, competition_id, custom_name,
         seasons ( id, name, year_id, years ( id, value ) ),
         competitions ( id, full_name, short_name, logo_url )
       `,
@@ -149,6 +151,7 @@ async function fetchTeamEditionStatsFallback(
           id: row.id as string,
           season_id: (row.season_id as string | null) ?? null,
           competition_id: (row.competition_id as string | null) ?? null,
+          custom_name: (row.custom_name as string | null) ?? null,
           seasons: seasonsRaw
             ? {
                 id: seasonsRaw.id as string,

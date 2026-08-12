@@ -55,6 +55,46 @@ export function resolveEditionData(
   return editionsByCompetition[first.id] ?? null;
 }
 
+/** Edição atual mais recente entre as competições ativas (para o hero). */
+export function resolveHeroEditionData(
+  editionsByCompetition: Record<string, HomeEditionData>,
+  competitions: Competition[],
+): HomeEditionData | null {
+  const entries = competitions
+    .map((c) => editionsByCompetition[c.id])
+    .filter((d): d is HomeEditionData => d != null);
+
+  if (!entries.length) return null;
+
+  return [...entries].sort((a, b) =>
+    b.editionId.localeCompare(a.editionId),
+  )[0];
+}
+
+export function getHeroCompetitionMeta(
+  editionsByCompetition: Record<string, HomeEditionData>,
+  competitions: Competition[],
+): {
+  id: string;
+  name: string;
+  primaryColor: string | null;
+  logoUrl: string | null;
+} | null {
+  const heroData = resolveHeroEditionData(
+    editionsByCompetition,
+    competitions,
+  );
+  if (!heroData) return null;
+
+  const comp = competitions.find((c) => c.id === heroData.competitionId);
+  return {
+    id: heroData.competitionId,
+    name: heroData.competitionName,
+    primaryColor: comp?.primary_color ?? null,
+    logoUrl: comp?.logo_url ?? null,
+  };
+}
+
 export function getStandingsForFilter(
   editionsByCompetition: Record<string, HomeEditionData>,
   competitions: Competition[],

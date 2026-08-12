@@ -1,23 +1,72 @@
-import { MATCH_ICONS, type MatchIconAsset } from "@/lib/match/icons";
+/**
+ * Ícones oficiais (`arq/svg` + `arq/PENALTI OU SHOOT-OUT PERDIDO.svg`).
+ * Render via SVG inline para manter cores/paths.
+ */
+const ICONS = {
+  ball: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="currentColor"><path d="m9.5 5.83-2.76 1v3.02l2.08.81 2.07-2.29z"/><path d="M7 0C3.14 0 0 3.14 0 7s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7m0 12.26c-.97 0-1.88-.27-2.66-.73l.25-1.38-1.55-1.73-.94.48A5.2 5.2 0 0 1 1.74 7v-.17l2.01-.72.66-2.48-.92-.55a5.24 5.24 0 0 1 3.5-1.35c.1 0 .19 0 .29.01l-.29 1.07 2.72 1.15.88-.81c1.02.96 1.67 2.32 1.67 3.83 0 2.9-2.36 5.27-5.26 5.27z"/></svg>`,
+  /** BOLA GOAL.svg */
+  ballGoal: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="currentColor"><path d="M9.5,5.83l-2.76,1v3.02l2.08.81,2.07-2.29-1.39-2.54Z"/><path d="M7,0C3.14,0,0,3.14,0,7s3.14,7,7,7,7-3.14,7-7S10.86,0,7,0M7,12.26c-.97,0-1.88-.27-2.66-.73l.25-1.38-1.55-1.73-.94.48c-.24-.61-.36-1.25-.36-1.9v-.17l2.01-.72.66-2.48-.92-.55c.96-.87,2.21-1.35,3.5-1.35.1,0,.19,0,.29,0l-.29,1.07,2.72,1.15.88-.81c1.02.96,1.67,2.32,1.67,3.83,0,2.9-2.36,5.27-5.26,5.27h0Z"/></svg>`,
+  /** PENALTI.svg */
+  penalty: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="currentColor"><path d="m8.78 8.43-1.88.68v2.06l1.41.55 1.42-1.56z"/><path d="M7.07 4.45c-2.63 0-4.77 2.14-4.77 4.77s2.14 4.77 4.77 4.77 4.77-2.14 4.77-4.77S9.7 4.45 7.07 4.45m0 8.37c-.66 0-1.28-.18-1.82-.5l.17-.94-1.06-1.18-.64.33c-.16-.4-.24-.84-.24-1.29v-.12l1.37-.49.45-1.69-.63-.37c.64-.57 1.47-.92 2.39-.92h.2l-.2.73 1.86.78.6-.55c.7.66 1.14 1.58 1.14 2.62 0 1.98-1.61 3.59-3.59 3.59"/><path d="M14 6.75h-1.5V1.5h-11v5.25H0V0h14z"/></svg>`,
+  /** PENALTI OU SHOOT-OUT PERDIDO.svg */
+  penaltyMissed: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="#E35C47"><path d="m10.6 7 1.399 1.524-2.522 2.474L12 13.474 10.6 15 8 12.448 5.399 15 4 13.474l2.522-2.476L4 8.524 5.399 7l2.6 2.549L10.6 7zM15 1v6.75h-1.5V2.5h-11v5.25H1V1h14z"/></svg>`,
+  /** ASSISTENCIA.svg */
+  assist: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12.92 14.01" fill="currentColor"><path fill-rule="evenodd" d="M9,12.01l1.5,1.5-2.5.5-.5-.5,1.5-1.5ZM6.42,0v1l2,1h2l1,6,1.5,4.5-1,1L1.92,3.5,4.42,0h2ZM6.5,9.51l1.5,1.5-2.5.5-.5-.5,1.5-1.5ZM4,7.01l1.5,1.5-2.5.5-.5-.5,1.5-1.5ZM9.93,7.2h-2.35l1.41,1.41h1.18l-.24-1.41ZM1.5,4.51l1.5,1.5-2.5.5-.5-.5,1.5-1.5ZM9.41,4.5h-4.48l1.41,1.41h3.31l-.24-1.41Z"/></svg>`,
+  /** CARTAO VERMELHO.svg */
+  redCard: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M3 1h10v14H3z" fill="#E35C47"/></svg>`,
+  /** CARTAO AMARELO.svg */
+  yellowCard: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M3 1h10v14H3z" fill="#D9AF00"/></svg>`,
+  /** CARTAO AMARELO-VERMELHO.svg */
+  yellowRedCard: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M6 1V4.66667V12H9.81818H13V1H6Z" fill="#E35C47"/><path d="M5 13V11.3333V4H3V15H10V13H6.18182H5Z" fill="#D9AF00"/></svg>`,
+  /** STAR.svg */
+  star: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="m12 6.515 1.3 2.627.47.94 1.04.15 2.9.419-2.1 2.048-.75.729.18 1.039.5 2.887-2.59-1.359-.93-.49-.93.49-2.59 1.359.5-2.887.18-1.039-.75-.73-2.1-2.047 2.9-.42 1.04-.15.47-.939 1.3-2.627m0-4.515L8.95 8.253 2 9.263l5 4.864L5.82 21 12 17.753 18.18 21 17 14.127l5-4.865-6.91-.999L12 2z"/></svg>`,
+  /** STADIUM.svg */
+  stadium: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M5.86 9H4.67l-2.5 1.88.43.32 2.53 1.9 1.83-1.37zM16.04 11.55 17.06 9H6.94l1.02 2.55zM19.33 9h-1.19l-1.1 2.73 1.83 1.37 2.53-1.9.43-.32zM10 4H9v2h1z"/><path d="M18 8V2H6v6zm-3-5h1v4h-1zM8 6V3h3v4H8zM18 15H6l-4-3v7l4 3h3v-4l1-1h4l1 1v4h3l4-3v-7z"/></svg>`,
+  ownGoal: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 175.29 191.85" fill="currentColor"><path d="M93.06,21.3c-16.94-.86-33.43,4.91-46.2,16.37l11.21,6.73-8.08,30.37-24.56,8.79c-.2,8.48,1.15,16.99,4.36,25.15l-18.42,11.5c-5.14-11.66-7.56-24-7.24-36.55.38-22.67,10.1-44.07,25.97-59.48,35.15-34.13,91.72-31.83,123.96,5.07,14.92,16.88,22.72,39.57,20.99,62.54-6.02-4.58-13.7-6.15-21.12-4.16.57-18.55-6.65-36.01-20.36-49.04l-10.76,9.9-33.29-14.08,3.54-13.11Z"/><path d="M33.35,189.17L1.77,152.43c-2.81-3.27-2.24-8.18,1.48-10.5l40.83-25.49c4.05-2.53,9.46-1.16,12.39,2.26,2.59,3.24,2.23,7.96-1.36,10.22l-23.61,14.83,52.41,7.97c12.11,1.34,24.19-.21,35.35-4.94,16.5-7.03,29.57-21.02,32.44-38.98.38-2.4,1.48-4.33,3.6-5.57,4-2.33,9.12-1.61,12.27,1.74,1.92,2.05,2.27,4.39,1.79,7.09-2.17,12.28-7.99,23.46-16.64,32.5-14.87,15.54-36.34,23.64-57.73,23.99-5.38.06-10.34-.17-15.65-.98l-50.14-7.63,18.03,21.03c2.67,3.4,1.91,7.95-1.69,10.33-3.79,2.42-8.63,1.95-12.19-1.14Z"/><polygon points="111.98 130.38 86.46 120.49 86.45 83.51 120.26 71.25 137.29 102.35 111.98 130.38"/></svg>`,
+  foul: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 79.04 108.9" fill="currentColor"><path d="M29.93,108.15C13.92,105.48.3,94.07,0,77.09h22.07c.12,3.57,1.55,6.75,4.1,9.15,2.51,2.33,5.55,3.82,8.92,4.43,2.5.42,4.91.45,7.41.03,5.71-.94,10.43-4.6,12.79-9.87s2.3-12.09,0-17.25c-2.39-5.37-7.12-9.15-12.92-10.17-5.35-.92-10.76.1-15.41,2.89-1.72,1.07-3.16,2.32-4.42,3.99l-20.27-3.6L7.34.01h65.7s0,18.59,0,18.59H26.1s-2.67,26.84-2.67,26.84c.36.13.67-.01.82-.3,3.62-4.7,9.98-7.53,15.79-8.4,4.17-.63,8.28-.52,12.43.28,13.13,2.53,23.06,13.01,25.71,26.04,1.07,5.25,1.12,10.56.22,15.84-1.6,9.47-7.05,17.79-15.02,23.11-4.73,3.16-10,5.22-15.65,6.16s-11.81.99-17.8-.01Z"/></svg>`,
+  disputeGoal: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="#22C55E"><path fill-rule="evenodd" d="M14.52 5.243 6.744 13.02l-1.697-1.697v-.002L2.5 8.778 4.228 7.05l2.546 2.544 6.05-6.048z"/></svg>`,
+  disputeMiss: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#EF4444"><path fill-rule="evenodd" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
+  substitution: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7.5 4.5 4 8h2.5v8.5h2V8H11zM16.5 19.5 20 16h-2.5V7.5h-2V16H13z"/></svg>`,
+  twoMin: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16 8 8 0 010-16zm-.75 2.5v5.2l4.2 2.5.75-1.25-3.45-2.05V6.5z"/></svg>`,
+  glove: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="m2.901 9.399 4.2 4.199L5.697 15H4.77l-3.265-3.267L1.5 10.8zM10.758 1l.915.873-3.145 3.29.452.435 3.78-3.955.884.841-3.786 3.953.452.436 3.152-3.294.884.841-3.153 3.3.453.43 2.519-2.635.396.387v1.026l-3.902 4.085-3.183 2.157-4.2-4.149 1.327-6.268 1.341.285-.084 2.658.8-.419z"/></svg>`,
+  captain: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M3.2 8.2c0-2.1 3.9-3.8 8.8-3.8s8.8 1.7 8.8 3.8v7.6c0 2.1-3.9 3.8-8.8 3.8s-8.8-1.7-8.8-3.8V8.2z"/><ellipse cx="12" cy="8.2" rx="8.8" ry="3.2" fill="#0D0D0D"/><ellipse cx="12" cy="8.2" rx="8.8" ry="3.2" fill="none" stroke="currentColor" stroke-width="1.1"/><path fill="none" stroke="currentColor" stroke-width="1.15" d="M8.35 9.1v7.35M15.65 9.1v7.35"/><path fill="currentColor" d="M14.55 11.05c-.45-.5-1.05-.78-1.8-.78-1.35 0-2.35 1.05-2.35 2.85s1 2.85 2.35 2.85c.75 0 1.35-.28 1.8-.78l-.75-.7c-.28.3-.6.48-.98.48-.7 0-1.2-.6-1.2-1.85s.5-1.85 1.2-1.85c.38 0 .7.18.98.48z"/></svg>`,
+} as const;
+
+export type MatchIconName = keyof typeof ICONS;
+
+export const MATCH_ICON_SIZE = 20;
 
 interface MatchIconProps {
-  name: MatchIconAsset;
+  name: MatchIconName;
   size?: number;
   className?: string;
+  /** Cards mantêm cor própria; demais usam currentColor. */
+  tinted?: boolean;
 }
 
-export function MatchIcon({ name, size = 16, className = "" }: MatchIconProps) {
-  const src = MATCH_ICONS[name];
-  if (!src) return null;
+export function MatchIcon({
+  name,
+  size = MATCH_ICON_SIZE,
+  className = "",
+  tinted = true,
+}: MatchIconProps) {
+  const xml = ICONS[name];
+  if (!xml) return null;
+
+  const keepNativeColor =
+    name === "penaltyMissed" ||
+    name === "redCard" ||
+    name === "yellowCard" ||
+    name === "yellowRedCard" ||
+    name === "disputeGoal" ||
+    name === "disputeMiss";
 
   return (
-    <img
-      src={src}
-      alt=""
-      width={size}
-      height={size}
-      className={className}
-      decoding="async"
+    <span
+      className={`match-app-icon ${tinted && !keepNativeColor ? "match-app-icon--tinted" : ""} ${className}`.trim()}
+      style={{ width: size, height: size }}
+      aria-hidden
+      dangerouslySetInnerHTML={{ __html: xml }}
     />
   );
 }

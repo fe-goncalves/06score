@@ -108,7 +108,17 @@ export function isShootoutGoalType(
 
 export function isPenaltyMissedActionType(actionType: string): boolean {
   const t = normalizeActionType(actionType);
-  return t === "penalty_missed" || t === "pen_missed" || t === "penalty_miss";
+  return (
+    t === "penalty_missed" ||
+    t === "pen_missed" ||
+    t === "penalty_miss" ||
+    t === "shootout_missed" ||
+    t === "shoot_out_missed" ||
+    t === "shootout_miss" ||
+    t === "st_missed" ||
+    t === "penalti_perdido" ||
+    t === "shootout_perdido"
+  );
 }
 
 /** Gol contra: flag, `goal_type` ou `action_type` dedicado. */
@@ -232,14 +242,28 @@ export function countsAsPeriodFoul(actionType: string): boolean {
 export function timelineDisplayLabel(
   actionType: string,
   missResult?: string | null,
+  goalType?: string | null,
 ): string | null {
   if (isFifthFoulActionType(actionType)) return "QUINTA FALTA";
   if (isPenaltyMissedActionType(actionType)) {
-    const mr = normalizeActionType(missResult ?? "");
-    if (mr === "goalkeeper_save" || mr === "save" || mr === "defended") {
-      return "Pênalti defendido";
+    const isShootout = isShootoutGoalType(goalType);
+    const base = isShootout ? "Shoot-out perdido" : "Pênalti perdido";
+    const miss = missResult?.trim();
+    if (!miss) return base;
+    const mr = normalizeActionType(miss);
+    if (
+      mr === "goalkeeper_save" ||
+      mr === "save" ||
+      mr === "defended" ||
+      mr === "defesa"
+    ) {
+      return isShootout ? "Shoot-out defendido" : "Pênalti defendido";
     }
-    return "Pênalti perdido";
+    if (mr === "off_target" || mr === "para_fora") return "Para fora";
+    if (mr === "post" || mr === "trave" || mr === "crossbar") return "Trave";
+    if (mr === "foul" || mr === "falta") return "Falta na cobrança";
+    // Motivo livre vindo do admin
+    return miss.replace(/_/g, " ");
   }
   return null;
 }

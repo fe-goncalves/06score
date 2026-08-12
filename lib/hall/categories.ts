@@ -54,6 +54,22 @@ export const HALL_ATHLETE_STAT_CATEGORIES: AthleteStatCategoryDef[] = [
     section: "athletes",
   },
   {
+    key: "penalty_goals",
+    label: "Gols de pênalti",
+    valueLabel: "Gols",
+    careerField: "total_penalties_scored",
+    editionField: "penalties_scored",
+    section: "athletes",
+  },
+  {
+    key: "shootout_goals",
+    label: "Gols de shoot-out",
+    valueLabel: "Gols",
+    careerField: "total_shootouts_scored",
+    editionField: "shootouts_scored",
+    section: "athletes",
+  },
+  {
     key: "matches",
     label: "Mais jogos",
     valueLabel: "Jogos",
@@ -94,6 +110,22 @@ export const HALL_ATHLETE_STAT_CATEGORIES: AthleteStatCategoryDef[] = [
     section: "athletes",
   },
   {
+    key: "yellow_cards",
+    label: "Cartões amarelos",
+    valueLabel: "Amarelos",
+    careerField: "total_yellow_cards",
+    editionField: "yellow_cards",
+    section: "athletes",
+  },
+  {
+    key: "red_cards",
+    label: "Cartões vermelhos",
+    valueLabel: "Vermelhos",
+    careerField: "total_red_cards",
+    editionField: "red_cards",
+    section: "athletes",
+  },
+  {
     key: "pokers",
     label: "Mais pokers",
     valueLabel: "Pokers",
@@ -101,27 +133,14 @@ export const HALL_ATHLETE_STAT_CATEGORIES: AthleteStatCategoryDef[] = [
     editionField: "pokers",
     section: "athletes",
   },
-  {
-    key: "gk_penalty_saves",
-    label: "Defesas de pênalti",
-    valueLabel: "Defesas",
-    careerField: "penalty_saves",
-    editionField: "penalty_saves",
-    section: "athletes",
-    goalkeepersOnly: true,
-  },
 ];
 
 export const HALL_ATHLETE_CUSTOM_CATEGORIES: HallCustomCategoryDef[] = [
   { key: "goal_participation", label: "Participações em gol", valueLabel: "G+A", section: "athletes" },
-  { key: "goals_in_match", label: "Mais gols num jogo", valueLabel: "Gols", section: "athletes" },
   { key: "athlete_titles", label: "Mais títulos", valueLabel: "Títulos", section: "athletes" },
   { key: "athlete_finals", label: "Mais finais", valueLabel: "Finais", section: "athletes" },
   { key: "athlete_awards", label: "Mais premiações", valueLabel: "Prêmios", section: "athletes" },
-  { key: "penalty_rate", label: "Aproveitamento de pênaltis", valueLabel: "Aprov.", section: "athletes" },
-  { key: "shootout_rate", label: "Aproveitamento de shoot-outs", valueLabel: "Aprov.", section: "athletes" },
   { key: "gk_clean_sheets", label: "Clean sheets (goleiros)", valueLabel: "CS", section: "athletes" },
-  { key: "gk_shootout_saves", label: "Defesas de shoot-out", valueLabel: "Defesas", section: "athletes" },
 ];
 
 export const HALL_TEAM_STAT_CATEGORIES: TeamStatCategoryDef[] = [
@@ -142,6 +161,14 @@ export const HALL_TEAM_STAT_CATEGORIES: TeamStatCategoryDef[] = [
     section: "teams",
   },
   {
+    key: "mais_jogos",
+    label: "Mais jogos",
+    valueLabel: "Jogos",
+    careerField: "total_matches",
+    editionField: "matches_played",
+    section: "teams",
+  },
+  {
     key: "team_goals",
     label: "Mais gols",
     valueLabel: "Gols",
@@ -152,29 +179,28 @@ export const HALL_TEAM_STAT_CATEGORIES: TeamStatCategoryDef[] = [
 ];
 
 export const HALL_TEAM_SPECIAL_CATEGORIES: HallCustomCategoryDef[] = [
-  { key: "sequencia_invicto", label: "Maior invencibilidade", valueLabel: "Jogos", section: "teams" },
-  { key: "mais_cleansheets", label: "Mais clean sheets", valueLabel: "CS", section: "teams" },
-  { key: "sequencia_vitorias", label: "Sequência de vitórias", valueLabel: "Seq.", section: "teams" },
-  { key: "maior_goleada", label: "Maior goleada", valueLabel: "Saldo", section: "teams" },
+  { key: "mais_pontos", label: "Mais pontos", valueLabel: "Pts", section: "teams" },
 ];
 
 /** Ordem de exibição no Hall */
 export const HALL_TEAM_CATEGORY_ORDER = [
-  "sequencia_invicto",
+  "team_ranking",
   "team_titles",
+  "mais_pontos",
   "team_wins",
+  "mais_jogos",
   "team_goals",
-  "mais_cleansheets",
-  "sequencia_vitorias",
-  "maior_goleada",
 ];
 
 export const HALL_ATHLETE_CATEGORY_ORDER = [
   "goals",
-  "goals_in_match",
   "assists",
+  "penalty_goals",
+  "shootout_goals",
   "goal_participation",
   "hat_tricks",
+  "yellow_cards",
+  "red_cards",
   "pokers",
   "matches",
   "athlete_finals",
@@ -183,11 +209,7 @@ export const HALL_ATHLETE_CATEGORY_ORDER = [
   "totw",
   "motm",
   "motw",
-  "penalty_rate",
-  "shootout_rate",
   "gk_clean_sheets",
-  "gk_penalty_saves",
-  "gk_shootout_saves",
 ];
 
 export function sortHallCategories<T extends { key: string }>(

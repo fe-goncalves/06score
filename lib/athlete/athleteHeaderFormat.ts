@@ -64,6 +64,75 @@ export function nationalityFlagEmoji(nationality: string | null | undefined): st
   return NATIONALITY_FLAGS[key] ?? null;
 }
 
+const NATIONALITY_ISO2: Record<string, string> = {
+  brasil: "BR",
+  brazil: "BR",
+  argentina: "AR",
+  portugal: "PT",
+  uruguai: "UY",
+  uruguay: "UY",
+  paraguai: "PY",
+  paraguay: "PY",
+  chile: "CL",
+  colombia: "CO",
+  "colômbia": "CO",
+  peru: "PE",
+  equador: "EC",
+  ecuador: "EC",
+  bolivia: "BO",
+  "bolívia": "BO",
+  venezuela: "VE",
+  mexico: "MX",
+  "méxico": "MX",
+  usa: "US",
+  eua: "US",
+  "estados unidos": "US",
+  france: "FR",
+  "frança": "FR",
+  germany: "DE",
+  alemanha: "DE",
+  italy: "IT",
+  italia: "IT",
+  "itália": "IT",
+  spain: "ES",
+  espanha: "ES",
+  england: "GB",
+  inglaterra: "GB",
+  netherlands: "NL",
+  holanda: "NL",
+  belgium: "BE",
+  "bélgica": "BE",
+  croatia: "HR",
+  "croácia": "HR",
+  serbia: "RS",
+  "sérvia": "RS",
+  japan: "JP",
+  "japão": "JP",
+  "coreia do sul": "KR",
+  "south korea": "KR",
+  nigeria: "NG",
+  "nigéria": "NG",
+  ghana: "GH",
+  gana: "GH",
+  senegal: "SN",
+  cameroon: "CM",
+  "camarões": "CM",
+  "ivory coast": "CI",
+  "costa do marfim": "CI",
+  angola: "AO",
+  "cabo verde": "CV",
+};
+
+/** Código ISO 3166-1 alpha-2 para `country-flag-icons`. */
+export function nationalityIso2(nationality: string | null | undefined): string | null {
+  if (!nationality?.trim()) return null;
+  const raw = nationality.trim();
+  const key = raw.toLowerCase();
+  if (NATIONALITY_ISO2[key]) return NATIONALITY_ISO2[key];
+  if (/^[a-z]{2}$/i.test(raw)) return raw.toUpperCase();
+  return null;
+}
+
 const NATIONALITY_CODES: Record<string, string> = {
   brasil: "BRA",
   brazil: "BRA",

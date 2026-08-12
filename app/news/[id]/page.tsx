@@ -5,6 +5,8 @@ import { getNewsArticle } from "@/lib/data/news";
 import { OrgImage } from "@/components/ui/OrgImage";
 import { ArticleBody } from "@/components/news/ArticleBody";
 import { ArticleTags } from "@/components/news/ArticleTags";
+import { metaIcons } from "@/lib/metaIcons";
+import { metaTitle } from "@/lib/metaTitle";
 import { formatPublishedDate } from "@/lib/utils";
 import type { Metadata } from "next";
 
@@ -22,11 +24,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!org) return {};
   const article = await getNewsArticle(id, org.id);
   if (!article) return {};
+  const title = metaTitle(article.title);
+  const tagLogo =
+    article.tags_competitions.find((c) => c.logo_url)?.logo_url ??
+    article.tags_teams.find((t) => t.logo_url)?.logo_url ??
+    null;
   return {
-    title: article.title,
+    title,
     description: article.subtitle ?? undefined,
+    icons: metaIcons(tagLogo, org.logo_url),
     openGraph: {
-      title: article.title,
+      title,
       description: article.subtitle ?? undefined,
       images: article.cover_url ? [article.cover_url] : [],
     },

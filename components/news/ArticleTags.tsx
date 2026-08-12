@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OrgImage } from "@/components/ui/OrgImage";
 
 interface TagTeam {
   id: string;
@@ -11,6 +12,7 @@ interface TagCompetition {
   id: string;
   full_name: string;
   short_name: string | null;
+  logo_url?: string | null;
 }
 
 interface ArticleTagsProps {
@@ -18,29 +20,58 @@ interface ArticleTagsProps {
   competitions: TagCompetition[];
 }
 
+type TagItem = {
+  key: string;
+  href: string;
+  label: string;
+  logoUrl: string | null;
+};
+
 export function ArticleTags({ teams, competitions }: ArticleTagsProps) {
-  if (!teams.length && !competitions.length) return null;
+  const items: TagItem[] = [
+    ...competitions.map((competition) => ({
+      key: `comp-${competition.id}`,
+      href: `/competicoes/${competition.id}`,
+      label: (competition.short_name ?? competition.full_name).trim(),
+      logoUrl: competition.logo_url?.trim() || null,
+    })),
+    ...teams.map((team) => ({
+      key: `team-${team.id}`,
+      href: `/times/${team.id}`,
+      label: (team.short_name ?? team.full_name).trim(),
+      logoUrl: team.logo_url?.trim() || null,
+    })),
+  ].filter((item) => item.label);
+
+  if (!items.length) return null;
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {competitions.map((c) => (
-        <Link
-          key={c.id}
-          href={`/competicoes/${c.id}`}
-          className="rounded-full border border-[var(--color-brand)]/40 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[var(--color-brand)] transition-colors hover:border-[var(--color-brand)] hover:bg-[var(--color-brand)]/10"
-        >
-          {c.short_name ?? c.full_name}
-        </Link>
+    <nav className="article-tags" aria-label="Tags">
+      {items.map((item, index) => (
+        <span key={item.key} className="article-tag-wrap">
+          {index > 0 ? (
+            <span className="article-tag-sep" aria-hidden>
+              ·
+            </span>
+          ) : null}
+          <Link href={item.href} className="article-tag">
+            <span className="article-tag-logo-slot">
+              {item.logoUrl ? (
+                <OrgImage
+                  src={item.logoUrl}
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="article-tag-logo"
+                />
+              ) : (
+                <span className="article-tag-logo article-tag-logo--ph" aria-hidden />
+              )}
+            </span>
+            <span className="article-tag-label">{item.label}</span>
+          </Link>
+        </span>
       ))}
-      {teams.map((t) => (
-        <Link
-          key={t.id}
-          href={`/times/${t.id}`}
-          className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white/60 transition-colors hover:border-white/40 hover:text-white/90"
-        >
-          {t.short_name ?? t.full_name}
-        </Link>
-      ))}
-    </div>
+    </nav>
   );
 }

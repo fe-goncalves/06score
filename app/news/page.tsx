@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import { SiteListHero } from "@/components/layout/SiteListHero";
 import { NewsListClient } from "@/components/news/NewsListClient";
 import { getPublishedNews } from "@/lib/data/news";
 import { getCompetitionsList } from "@/lib/data/competition";
+import { metaTitle } from "@/lib/metaTitle";
 import { getOrgSlug, getOrganization } from "@/lib/org";
 import type { Metadata } from "next";
 
@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const slug = await getOrgSlug();
   const org = await getOrganization(slug);
   return {
-    title: `Notícias${org ? ` · ${org.name}` : ""}`,
+    title: metaTitle(org ? `${org.name} — NOTÍCIAS` : "NOTÍCIAS"),
   };
 }
 
@@ -31,16 +31,9 @@ export default async function NoticiasPage() {
   }));
 
   return (
-    <div className="site-list-page">
-      <SiteListHero
-        eyebrow="Cobertura"
-        title="Notícias"
-        description={`Últimas novidades, resultados e bastidores da ${org.name}.`}
-      />
-      <NewsListClient
-        articles={articles}
-        competitions={competitionFilters}
-      />
-    </div>
+    <NewsListClient
+      articles={articles}
+      competitions={competitionFilters}
+    />
   );
 }

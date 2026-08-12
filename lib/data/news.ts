@@ -41,12 +41,12 @@ async function fetchArticleTags(
     () =>
       supabase
         .from("news_article_competitions")
-        .select("competitions(id, full_name, short_name)")
+        .select("competitions(id, full_name, short_name, logo_url)")
         .eq("article_id", articleId),
     () =>
       supabase
         .from("news_article_competitions")
-        .select("competitions(id, full_name, short_name)")
+        .select("competitions(id, full_name, short_name, logo_url)")
         .eq("news_article_id", articleId),
   ];
 
@@ -171,6 +171,16 @@ export async function getPublishedNews(
   }));
 }
 
+export async function getPublishedNewsByCompetition(
+  orgId: string,
+  competitionId: string,
+): Promise<NewsArticleListItem[]> {
+  const all = await getPublishedNews(orgId);
+  return all.filter((article) =>
+    article.competition_ids.includes(competitionId),
+  );
+}
+
 export async function getNewsArticle(
   id: string,
   orgId: string,
@@ -206,4 +216,95 @@ export async function getPublishedNewsIds(orgId: string): Promise<string[]> {
   }
 
   return (data ?? []).map((row) => String(row.id));
+}
+
+/** Notícias publicadas com a tag desta equipe. */
+export async function getTeamNews(
+  orgId: string,
+  teamId: string,
+  limit = 12,
+): Promise<NewsArticleListItem[]> {
+  const supabase = getSupabase();
+
+  type JoinRow = {
+    article_id?: string;
+    news_article_id?: string;
+  };
+
+  async function loadJoins(): Promise<string[]> {
+    const attempts = [
+      () =>
+        supabase
+          .from("news_article_teams")
+          .select("article_id")
+          .eq("team_id", teamId),
+      () =>
+        supabase
+          .from("news_article_teams")
+          .select("news_article_id")
+          .eq("team_id", teamId),
+    ];
+
+    for (const attempt of attempts) {
+      const { data, error } = await attempt();
+      if (!error && data) {
+        return (data as JoinRow[])
+          .map((r) => r.article_id ?? r.news_article_id)
+          .filter((id): id is string => Boolean(id));
+      }
+      if (error && !error.message.includes("does not exist")) {
+        console.error("[getTeamNews]", error.message);
+        return [];
+      }
+    }
+    return [];
+  }
+
+  const articleIds = await loadJoins();
+  if (!articleIds.length) return [];
+
+  const { data, error } = await supabase
+    .from("news_articles")
+    .select("id, title, subtitle, cover_url, published_at")
+    .eq("organization_id", orgId)
+    .eq("is_published", true)
+    .in("id", articleIds)
+    .order("published_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("[getTeamNews:articles]", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    title: row.title as string,
+    subtitle: (row.subtitle as string | null) ?? null,
+    cover_url: (row.cover_url as string | null) ?? null,
+    published_at: (row.published_at as string | null) ?? null,
+    competition_ids: [],
+  }));
+}
+
+/** Tagged first; senão notícias das competições da equipe. */
+export async function getTeamRelatedNews(
+  orgId: string,
+  teamId: string,
+  competitionIds: string[],
+  limit = 5,
+): Promise<NewsArticleListItem[]> {
+  const tagged = await getTeamNews(orgId, teamId, 20);
+  if (tagged.length) return tagged.slice(0, Math.max(limit, 12));
+
+  if (!competitionIds.length) {
+    return (await getPublishedNews(orgId)).slice(0, limit);
+  }
+
+  const all = await getPublishedNews(orgId);
+  const related = all.filter((a) =>
+    a.competition_ids.some((id) => competitionIds.includes(id)),
+  );
+  if (related.length) return related.slice(0, Math.max(limit, 12));
+  return all.slice(0, Math.max(limit, 12));
 }

@@ -6,6 +6,7 @@ import type {
   Group,
   GroupTeam,
   Match,
+  MatchRound,
   Matchup,
   Phase,
   TableMarker,
@@ -31,6 +32,7 @@ interface PhaseStandingsBlockProps {
   phase: Phase;
   matches: Match[];
   matchups: Matchup[];
+  rounds?: MatchRound[];
   teamEditionStats: TeamEditionStats[];
   groups: Group[];
   groupTeams: GroupTeam[];
@@ -42,6 +44,7 @@ export function PhaseStandingsBlock({
   phase,
   matches,
   matchups,
+  rounds = [],
   teamEditionStats,
   groups,
   groupTeams,
@@ -50,6 +53,7 @@ export function PhaseStandingsBlock({
 }: PhaseStandingsBlockProps) {
   const phaseMatches = matches.filter((m) => m.phase_id === phase.id);
   const phaseMatchups = matchups.filter((m) => m.phase_id === phase.id);
+  const phaseRounds = rounds.filter((r) => r.phase_id === phase.id);
   const phaseMarkers = markersForPhase(tableMarkers, phase.id);
   const isKnockout =
     phase.phase_type === "knockout" || phase.phase_type === "conference";
@@ -58,8 +62,12 @@ export function PhaseStandingsBlock({
     return (
       <div className="competition-bracket-wrap competition-tab-bracket">
         <BracketView
+          phaseType={
+            phase.phase_type === "conference" ? "conference" : "knockout"
+          }
           matchups={phaseMatchups}
           matches={phaseMatches}
+          rounds={phaseRounds}
           accentColor={accentColor}
         />
       </div>
