@@ -1,12 +1,12 @@
-import { SiteListHero } from "@/components/layout/SiteListHero";
 import { TeamsListClient } from "@/components/team/TeamsListClient";
 import { getOrgTeams } from "@/lib/data/home";
+import { metaTitle } from "@/lib/metaTitle";
 import { getOrgSlug, getOrganization } from "@/lib/org";
 
 export async function generateMetadata() {
   const slug = await getOrgSlug();
   const org = await getOrganization(slug);
-  return { title: org ? `${org.name} — Equipes` : "Equipes" };
+  return { title: metaTitle(org ? `${org.name} — EQUIPES` : "EQUIPES") };
 }
 
 export default async function TeamsListPage() {
@@ -17,12 +17,7 @@ export default async function TeamsListPage() {
   const teams = await getOrgTeams(org.id);
 
   return (
-    <div className="site-list-page">
-      <SiteListHero
-        eyebrow="Elenco"
-        title="Equipes"
-        description={`Conheça todos os times da ${org.name} — elencos, estatísticas e histórico de partidas.`}
-      />
+    <div className="site-list-page times-page">
       <TeamsListClient teams={teams} />
     </div>
   );

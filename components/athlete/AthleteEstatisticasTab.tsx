@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { AthleteHubFilter } from "@/components/athlete/AthleteHubFilter";
+import { MatchIcon } from "@/components/match/icons/MatchIcon";
 import { OrgLogo } from "@/components/ui/OrgLogo";
 import {
   buildCareerTotalsRow,
@@ -34,6 +35,23 @@ import {
   type StatsColumnKey,
 } from "@/lib/athlete/statsConfig";
 import type { AthleteEditionStatRow, AthleteProfileData, Team } from "@/lib/types";
+
+function StatsColumnHeading({ col }: { col: StatsColumnDef }) {
+  if (col.icon) {
+    return (
+      <span className="athlete-stats-col-icon-wrap" title={col.label}>
+        <MatchIcon
+          name={col.icon}
+          size={14}
+          className="athlete-stats-col-icon"
+          tinted
+        />
+        <span className="sr-only">{col.label}</span>
+      </span>
+    );
+  }
+  return <span title={col.label}>{col.abbr}</span>;
+}
 
 interface AthleteEstatisticasTabProps {
   editionStats: AthleteProfileData["editionStats"];
@@ -239,17 +257,45 @@ export function AthleteEstatisticasTab({
     profileKind,
   ]);
 
+  const matchRatingOpts = useMemo(() => {
+    return {
+      teamId: teamId !== "all" ? teamId : undefined,
+      phaseIds:
+        phaseKey !== "all" && selectedPhaseGroup
+          ? new Set(selectedPhaseGroup.phaseIds)
+          : undefined,
+    };
+  }, [teamId, phaseKey, selectedPhaseGroup]);
+
   const seasonGroups = useMemo(
-    () => groupEditionStatsBySeason(tableEditionStats, profileKind),
-    [tableEditionStats, profileKind],
+    () =>
+      groupEditionStatsBySeason(
+        tableEditionStats,
+        profileKind,
+        recentMatches,
+        matchRatingOpts,
+      ),
+    [tableEditionStats, profileKind, recentMatches, matchRatingOpts],
   );
 
   const filtersActive = hasActiveStatsFilters(filters, phaseKey);
 
   const totalsRow = useMemo(() => {
     if (!filtersActive) return buildCareerTotalsRow(careerStats, profileKind);
-    return buildTotalsFromEditionRows(tableEditionStats, profileKind);
-  }, [filtersActive, careerStats, tableEditionStats, profileKind]);
+    return buildTotalsFromEditionRows(
+      tableEditionStats,
+      profileKind,
+      recentMatches,
+      matchRatingOpts,
+    );
+  }, [
+    filtersActive,
+    careerStats,
+    tableEditionStats,
+    profileKind,
+    recentMatches,
+    matchRatingOpts,
+  ]);
 
   const flatSeasonRows =
     competitionId !== "all" && phaseKey !== "all" && selectedPhaseGroup != null;
@@ -330,8 +376,8 @@ export function AthleteEstatisticasTab({
                   Time
                 </th>
                 {statColumns.map((col) => (
-                  <th key={col.abbr} scope="col">
-                    {col.abbr}
+                  <th key={col.abbr} scope="col" className="athlete-stats-th-metric">
+                    <StatsColumnHeading col={col} />
                   </th>
                 ))}
               </tr>
@@ -434,10 +480,21 @@ export function AthleteEstatisticasTab({
         <div className="athlete-stats-legend">
           <p className="athlete-stats-legend-title">Legenda</p>
           <ul className="athlete-stats-legend-list">
-            {statColumns.map(({ abbr, label }) => (
-              <li key={abbr}>
-                <span className="athlete-stats-legend-abbr">{abbr}</span>
-                <span className="athlete-stats-legend-desc">{label}</span>
+            {statColumns.map((col) => (
+              <li key={col.abbr}>
+                <span className="athlete-stats-legend-abbr">
+                  {col.icon ? (
+                    <MatchIcon
+                      name={col.icon}
+                      size={14}
+                      className="athlete-stats-legend-icon"
+                      tinted
+                    />
+                  ) : (
+                    col.abbr
+                  )}
+                </span>
+                <span className="athlete-stats-legend-desc">{col.label}</span>
               </li>
             ))}
           </ul>

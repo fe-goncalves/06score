@@ -13,6 +13,7 @@ export function TeamMatchesPanel({ matches, className }: TeamMatchesPanelProps) 
     <AthleteMatchesList
       matches={matches}
       className={className}
+      variant="team"
       enableEditionFilter
       emptyMessage="Nenhuma partida encontrada para este time."
       emptyFilterMessage="Nenhuma partida nesta competição."

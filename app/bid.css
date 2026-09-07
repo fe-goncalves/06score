@@ -1,0 +1,611 @@
+/* ── BID (Boletim de Informação Desportiva) ──────────────────────────────── */
+
+.bid-page {
+  font-family: var(--font-sans);
+}
+
+.bid-page .site-list-sub {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.bid-page-body {
+  padding-top: 1.5rem;
+}
+
+.bid-toolbar-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.bid-picker-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.bid-picker-toolbar .bid-edition-picker {
+  margin-bottom: 0;
+}
+
+.bid-competition-picker {
+  flex: 1 1 16rem;
+  min-width: 14rem;
+  max-width: 22rem;
+}
+
+.bid-edition-secondary-picker {
+  flex: 0 1 auto;
+  min-width: 11rem;
+  max-width: 16rem;
+}
+
+.bid-edition-picker {
+  position: relative;
+  z-index: 20;
+  margin-bottom: 1.5rem;
+  max-width: 32rem;
+}
+
+.bid-edition-trigger {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top-color: rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    border-color 0.2s var(--hub-ease-out),
+    background 0.2s var(--hub-ease-out);
+}
+
+.bid-edition-trigger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-brand) 35%, rgba(255, 255, 255, 0.12));
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.bid-edition-picker-open .bid-edition-trigger {
+  border-color: color-mix(in srgb, var(--color-brand) 45%, rgba(255, 255, 255, 0.14));
+}
+
+.bid-edition-trigger:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-brand) 50%, transparent);
+  outline-offset: 2px;
+}
+
+.bid-edition-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bid-edition-trigger-logo {
+  height: 1.75rem;
+  width: 1.75rem;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.bid-edition-trigger-label,
+.bid-edition-trigger-placeholder {
+  min-width: 0;
+  flex: 1;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.bid-edition-trigger-placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.bid-edition-trigger-chevron {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.bid-edition-menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top-color: rgba(255, 255, 255, 0.14);
+  background: rgba(10, 10, 10, 0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.bid-edition-menu-row {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0.45rem;
+  z-index: 1;
+}
+
+.bid-edition-menu-row-split .bid-edition-menu-competitions {
+  width: 16rem;
+}
+
+.bid-edition-menu-row .bid-edition-menu {
+  position: static;
+  top: auto;
+  left: auto;
+  right: auto;
+  flex-shrink: 0;
+}
+
+.bid-edition-menu-editions {
+  width: 12rem;
+}
+
+.bid-edition-menu-editions-title {
+  margin: 0;
+  padding: 0.65rem 0.75rem 0.35rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.bid-edition-search-wrap {
+  padding: 0.55rem 0.55rem 0.35rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.bid-edition-search {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--card, #171717);
+  padding: 0.5rem 0.65rem;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: #fff;
+  transition:
+    border-color 0.2s var(--hub-ease-out),
+    background 0.2s var(--hub-ease-out);
+}
+
+.bid-edition-search::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.bid-edition-search:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--color-brand) 40%, rgba(255, 255, 255, 0.12));
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.bid-edition-options {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.bid-edition-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.65rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0.5rem 0.55rem;
+  text-align: left;
+  color: #fff;
+  cursor: pointer;
+  transition:
+    background 0.18s var(--hub-ease-out),
+    color 0.18s var(--hub-ease-out);
+}
+
+.bid-edition-option:hover {
+  background: var(--card, #171717);
+}
+
+.bid-edition-option-active {
+  background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+}
+
+.bid-edition-option-logo {
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.bid-edition-option-label {
+  min-width: 0;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.bid-edition-option-edition {
+  padding-left: 0.75rem;
+}
+
+.bid-edition-no-results {
+  padding: 0.85rem 0.65rem;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
+.bid-empty {
+  padding: 3rem 1rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.bid-team-grid {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .bid-team-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .bid-team-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.bid-team-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.32);
+  text-decoration: none;
+  color: inherit;
+  opacity: 0.58;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    opacity 0.22s var(--hub-ease-out),
+    border-color 0.2s var(--hub-ease-out),
+    background 0.2s var(--hub-ease-out),
+    transform 0.2s var(--hub-ease-out);
+}
+
+.bid-team-card:hover {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--color-brand) 35%, rgba(255, 255, 255, 0.1));
+  background: rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.bid-team-card-logo {
+  height: 3.5rem;
+  width: 3.5rem;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.bid-team-card-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.bid-team-card-name {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bid-team-card-meta {
+  margin-top: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.bid-team-card-meta strong {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.bid-team-card-meta-sep {
+  margin-inline: 0.35rem;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.bid-team-card-cta {
+  display: block;
+  margin-top: 0.55rem;
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-brand);
+  opacity: 0;
+  transform: translateY(2px);
+  transition:
+    opacity 0.2s var(--hub-ease-out),
+    transform 0.2s var(--hub-ease-out);
+}
+
+.bid-team-card:hover .bid-team-card-cta {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Detalhe da equipe */
+
+.bid-detail {
+  padding-top: 1.75rem;
+}
+
+.bid-detail-back {
+  display: inline-flex;
+  margin-bottom: 1.25rem;
+}
+
+.bid-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bid-detail-logo {
+  height: 4.5rem;
+  width: 4.5rem;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.bid-detail-edition {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-brand);
+}
+
+.bid-detail-team-name {
+  margin-top: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.bid-detail-counts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.bid-detail-section + .bid-detail-section {
+  margin-top: 1.5rem;
+}
+
+.bid-detail-section-title {
+  margin-bottom: 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.bid-detail-empty {
+  padding: 1.5rem 0.5rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.bid-athlete-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bid-athlete-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  text-decoration: none;
+  color: inherit;
+  opacity: 0.72;
+  transition: opacity 0.18s var(--hub-ease-out);
+}
+
+.bid-athlete-list li:last-child .bid-athlete-link {
+  border-bottom: none;
+}
+
+.bid-athlete-link:hover {
+  opacity: 1;
+}
+
+.bid-athlete-photo {
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.bid-athlete-photo--placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.bid-athlete-photo-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  opacity: 0.55;
+}
+
+.bid-athlete-name {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.bid-staff-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.bid-staff-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.35rem;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  opacity: 0.65;
+  transition:
+    opacity 0.2s var(--hub-ease-out),
+    background 0.2s var(--hub-ease-out);
+}
+
+.bid-staff-link:hover {
+  opacity: 1;
+  background: var(--card, #171717);
+}
+
+.bid-staff-photo {
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.bid-staff-photo--placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.bid-staff-photo-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  opacity: 0.55;
+}
+
+.bid-staff-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.bid-staff-name {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.bid-staff-role {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}

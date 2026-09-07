@@ -6,21 +6,40 @@ import { MATCH_SELECT_BASE } from "@/lib/utils";
 const MATCH_LIMIT = 120;
 
 const VENUE_FULL_SELECT =
-  "id, full_name, address, city, state, image_url, organization_id";
+  "id, full_name, short_name, address, logo_url, organization_id";
 
-const VENUE_MINIMAL_SELECT = "id, full_name, address, organization_id";
+const VENUE_MINIMAL_SELECT = "id, full_name, short_name, address, organization_id";
 
-const VENUE_EMBED_MINIMAL = "venues ( id, full_name, address )";
+const VENUE_EMBED_MINIMAL = "venues ( id, full_name, address, logo_url )";
 
 function unwrapVenueEmbed(
   raw:
-    | { id?: string; full_name?: string; address?: string | null }
-    | { id?: string; full_name?: string; address?: string | null }[]
+    | {
+        id?: string;
+        full_name?: string;
+        address?: string | null;
+        logo_url?: string | null;
+      }
+    | {
+        id?: string;
+        full_name?: string;
+        address?: string | null;
+        logo_url?: string | null;
+      }[]
     | null
     | undefined,
 ) {
   if (!raw) return null;
   return Array.isArray(raw) ? (raw[0] ?? null) : raw;
+}
+
+function normalizeVenue(row: OrgVenue): OrgVenue {
+  const logo = row.logo_url ?? row.image_url ?? null;
+  return {
+    ...row,
+    logo_url: logo,
+    image_url: logo,
+  };
 }
 
 async function fetchVenueRecord(
@@ -48,15 +67,18 @@ async function fetchVenueRecord(
     return null;
   }
 
-  if (data) return data as unknown as OrgVenue;
+  if (data) return normalizeVenue(data as unknown as OrgVenue);
 
-  const { data: byId, error: byIdError } = await trySelect(VENUE_MINIMAL_SELECT, false);
+  const { data: byId, error: byIdError } = await trySelect(
+    VENUE_MINIMAL_SELECT,
+    false,
+  );
   if (byIdError) {
     console.error("[getVenueProfile:venue:byId]", byIdError.message);
     return null;
   }
 
-  return (byId as unknown as OrgVenue | null) ?? null;
+  return byId ? normalizeVenue(byId as unknown as OrgVenue) : null;
 }
 
 async function fetchVenueMatches(
@@ -105,19 +127,24 @@ async function fetchVenueMatches(
 
 function venueFromEmbed(
   id: string,
-  raw: { full_name?: string; address?: string | null } | null,
+  raw: {
+    full_name?: string;
+    address?: string | null;
+    logo_url?: string | null;
+  } | null,
   orgId: string,
 ): OrgVenue | null {
   if (!raw?.full_name) return null;
-  return {
+  return normalizeVenue({
     id,
     full_name: raw.full_name,
+    short_name: null,
     address: raw.address ?? null,
     city: null,
     state: null,
-    image_url: null,
+    logo_url: raw.logo_url ?? null,
     organization_id: orgId,
-  };
+  });
 }
 
 export async function getOrgVenues(orgId: string): Promise<OrgVenue[]> {
@@ -130,11 +157,13 @@ export async function getOrgVenues(orgId: string): Promise<OrgVenue[]> {
     .order("full_name", { ascending: true });
 
   if (!error && data?.length) {
-    return (data as OrgVenue[]).map((v) => ({
-      ...v,
-      upcoming_matches: 0,
-      recent_matches: 0,
-    }));
+    return (data as OrgVenue[]).map((v) =>
+      normalizeVenue({
+        ...v,
+        upcoming_matches: 0,
+        recent_matches: 0,
+      }),
+    );
   }
 
   if (error) {
@@ -145,14 +174,16 @@ export async function getOrgVenues(orgId: string): Promise<OrgVenue[]> {
       .order("full_name", { ascending: true });
 
     if (!minimalError && minimal?.length) {
-      return (minimal as OrgVenue[]).map((v) => ({
-        ...v,
-        city: null,
-        state: null,
-        image_url: null,
-        upcoming_matches: 0,
-        recent_matches: 0,
-      }));
+      return (minimal as OrgVenue[]).map((v) =>
+        normalizeVenue({
+          ...v,
+          city: null,
+          state: null,
+          logo_url: null,
+          upcoming_matches: 0,
+          recent_matches: 0,
+        }),
+      );
     }
 
     if (minimalError && !minimalError.message.includes("does not exist")) {
@@ -186,8 +217,18 @@ async function getVenuesFromMatches(orgId: string): Promise<OrgVenue[]> {
   for (const row of data ?? []) {
     const venue = unwrapVenueEmbed(
       row.venues as
-        | { id?: string; full_name?: string; address?: string | null }
-        | { id?: string; full_name?: string; address?: string | null }[]
+        | {
+            id?: string;
+            full_name?: string;
+            address?: string | null;
+            logo_url?: string | null;
+          }
+        | {
+            id?: string;
+            full_name?: string;
+            address?: string | null;
+            logo_url?: string | null;
+          }[]
         | null,
     );
     const id = (row.venue_id as string) ?? venue?.id;
@@ -197,17 +238,21 @@ async function getVenuesFromMatches(orgId: string): Promise<OrgVenue[]> {
     if (existing) {
       existing.recent_matches = (existing.recent_matches ?? 0) + 1;
     } else {
-      map.set(id, {
+      map.set(
         id,
-        full_name: venue.full_name,
-        address: venue.address ?? null,
-        city: null,
-        state: null,
-        image_url: null,
-        organization_id: orgId,
-        recent_matches: 1,
-        upcoming_matches: 0,
-      });
+        normalizeVenue({
+          id,
+          full_name: venue.full_name,
+          short_name: null,
+          address: venue.address ?? null,
+          city: null,
+          state: null,
+          logo_url: venue.logo_url ?? null,
+          organization_id: orgId,
+          recent_matches: 1,
+          upcoming_matches: 0,
+        }),
+      );
     }
   }
 
@@ -234,15 +279,15 @@ export async function getVenueProfile(
     const embed = unwrapVenueEmbed(matches[0].venues ?? null);
     venue =
       venueFromEmbed(venueId, embed, orgId) ??
-      ({
+      normalizeVenue({
         id: venueId,
         full_name: embed?.full_name ?? "Arena",
         address: embed?.address ?? null,
         city: null,
         state: null,
-        image_url: null,
+        logo_url: embed?.logo_url ?? null,
         organization_id: orgId,
-      } satisfies OrgVenue);
+      });
   }
 
   if (!venue) return null;

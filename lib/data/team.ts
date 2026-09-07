@@ -15,6 +15,7 @@ import {
 import { fetchTeamEditionStats } from "@/lib/team/fetchTeamEditionStats";
 import { fetchTeamEditionPositions } from "@/lib/team/fetchTeamEditionPositions";
 import { getActiveEditionId } from "@/lib/data/home";
+import { getTeamRelatedNews } from "@/lib/data/news";
 import { fetchEditionTeamsForEdition, getPhaseIdsForOrg } from "@/lib/data/shared";
 import { getSupabase } from "@/lib/supabase";
 import type {
@@ -27,13 +28,15 @@ import type {
   TeamCareerSummary,
   TeamProfileData,
 } from "@/lib/types";
+import { enrichMatchesWithTiebreakScores } from "@/lib/match/matchTiebreak";
 import { MATCH_SELECT_BASE } from "@/lib/utils";
 
-const MATCH_LIMIT = 40;
+const MATCH_LIMIT = 120;
 
 const TEAM_SELECT = `
   id, full_name, short_name, abbreviation, logo_url, primary_color, secondary_color,
   organization_id, gender, founded_year, nationality, home_venue_id,
+  instagram_url, youtube_url, tiktok_url, twitter_url,
   venues!teams_home_venue_id_fkey ( id, full_name, short_name )
 `;
 
@@ -149,6 +152,7 @@ export async function getTeamProfile(
         winning_team_id,
         edition_id,
         competition_editions (
+          custom_name,
           competitions ( id, full_name, short_name, logo_url ),
           seasons ( name )
         ),
@@ -172,6 +176,7 @@ export async function getTeamProfile(
         athlete_id,
         athletes ( id, full_name, surname, photo_url ),
         competition_editions (
+          custom_name,
           competitions ( id, full_name, short_name, logo_url ),
           seasons ( name )
         ),
@@ -241,14 +246,24 @@ export async function getTeamProfile(
     if (matchesError) {
       console.error("[getTeamProfile:matches]", matchesError.message);
     } else {
-      recentMatches = ((matchesData as unknown as Match[] | null) ?? []).map((match) => ({
-        match: {
-          ...match,
-          athlete_team_id: teamId,
-        } as Match,
-        rating: null,
-        isMotm: false,
-        actions: [],
+      const rawMatches = ((matchesData as unknown as Match[] | null) ?? []).map(
+        (match) => ({
+          match: {
+            ...match,
+            athlete_team_id: teamId,
+          } as Match,
+          rating: null,
+          isMotm: false,
+          actions: [],
+        }),
+      );
+      const enriched = await enrichMatchesWithTiebreakScores(
+        rawMatches.map((entry) => entry.match),
+      );
+      const enrichedById = new Map(enriched.map((match) => [match.id, match]));
+      recentMatches = rawMatches.map((entry) => ({
+        ...entry,
+        match: enrichedById.get(entry.match.id) ?? entry.match,
       }));
     }
   }
@@ -297,6 +312,15 @@ export async function getTeamProfile(
     }
   }
 
+  const competitionIds = [
+    ...new Set(
+      editionStats
+        .map((row) => row.competition_editions?.competition_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const news = await getTeamRelatedNews(orgId, teamId, competitionIds, 5);
+
   return {
     team: team as Team & { id: string },
     careerSummary,
@@ -310,5 +334,6 @@ export async function getTeamProfile(
     foundedYear,
     staff,
     recentMatches,
+    news,
   };
 }

@@ -1,0 +1,25 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAM_ID.com.score06.orange",
+        "paths": [
+          "/",
+          "/news/*",
+          "/noticias/*",
+          "/jogos/*",
+          "/times/*",
+          "/atletas/*",
+          "/competicoes/*",
+          "/comissao/*",
+          "/arenas/*",
+          "/hall-da-fama",
+          "/hall-da-fama/*",
+          "/bid",
+          "/bid/*"
+        ]
+      }
+    ]
+  }
+}

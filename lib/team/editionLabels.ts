@@ -1,4 +1,5 @@
 import type { TeamEditionStatRow } from "@/lib/types";
+import { competitionEditionDisplayName } from "@/lib/competition/editionDisplayName";
 
 export function teamEditionEnrollmentPrimary(row: TeamEditionStatRow): string {
   const comp = row.competition_editions?.competitions;
@@ -6,8 +7,8 @@ export function teamEditionEnrollmentPrimary(row: TeamEditionStatRow): string {
 }
 
 export function teamEditionEnrollmentSecondary(row: TeamEditionStatRow): string {
-  const season = row.competition_editions?.seasons?.name?.trim();
-  return season ? `${season}.` : "Edição.";
+  const name = competitionEditionDisplayName(row.competition_editions);
+  return name !== "—" ? `${name}.` : "Edição.";
 }
 
 /** @deprecated Prefer `teamEditionEnrollmentPrimary` + `teamEditionEnrollmentSecondary`. */

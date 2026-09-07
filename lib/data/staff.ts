@@ -11,7 +11,9 @@ import type {
   AthleteTeamStint,
   Match,
   StaffCareerStats,
+  StaffListItem,
   StaffProfileData,
+  Team,
 } from "@/lib/types";
 import { MATCH_SELECT_BASE } from "@/lib/utils";
 
@@ -84,6 +86,57 @@ function normalizeStaffCareerStats(
           : null,
     total_ratings_count: num(raw.total_ratings_count),
   };
+}
+
+export async function getStaffList(orgId: string): Promise<StaffListItem[]> {
+  const supabase = getSupabaseServiceRole() ?? getSupabase();
+
+  const { data, error } = await supabase
+    .from("staff_members")
+    .select(
+      `
+      id,
+      full_name,
+      surname,
+      photo_url,
+      staff_roles ( full_name ),
+      staff_team_stints (
+        is_current,
+        teams ( full_name, short_name, logo_url, abbreviation, primary_color )
+      )
+    `,
+    )
+    .eq("organization_id", orgId)
+    .order("full_name", { ascending: true });
+
+  if (error) {
+    console.error("[getStaffList]", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => {
+    const stintsRaw = row.staff_team_stints as unknown as
+      | {
+          is_current: boolean | null;
+          teams: Team | Team[] | null;
+        }[]
+      | null;
+    const current =
+      (stintsRaw ?? []).find((stint) => stint.is_current) ??
+      (stintsRaw ?? [])[0] ??
+      null;
+    const teamRaw = current?.teams ?? null;
+    const team = Array.isArray(teamRaw) ? (teamRaw[0] ?? null) : teamRaw;
+
+    return {
+      id: row.id as string,
+      full_name: row.full_name as string,
+      surname: row.surname as string | null,
+      photo_url: row.photo_url as string | null,
+      role: staffRoleLabel(row as Record<string, unknown>),
+      current_team: team,
+    };
+  });
 }
 
 export async function getStaffProfile(

@@ -1,183 +1,219 @@
-import Link from "next/link";
-import { MatchNextGameCard } from "@/components/match/MatchNextGameCard";
+"use client";
+
+import { useMemo, useState } from "react";
+import { MatchCard } from "@/components/home/MatchCard";
+import { OrgImage } from "@/components/ui/OrgImage";
+import { PillStepper } from "@/components/ui/PillStepper";
 import { TeamLogo } from "@/components/ui/TeamLogo";
-import { buildMatchH2H, getH2HResult, type H2HResult } from "@/lib/match/h2h";
-import type { Match } from "@/lib/types";
-import {
-  formatMatchDateTime,
-  formatMatchPhaseRoundLabel,
-  isMatchFinished,
-} from "@/lib/utils";
+import type { Match, Team } from "@/lib/types";
 
 interface MatchH2HPanelProps {
   match: Match;
   h2hMatches: Match[];
-  nextGameA: Match | null;
-  nextGameB: Match | null;
+  upcomingA: Match[];
+  upcomingB: Match[];
   teamAId: string;
   teamBId: string;
 }
 
-const H2H_RESULT_LABEL: Record<H2HResult, string> = {
-  win: "V",
-  loss: "D",
-  draw: "E",
+type EditionGroup = {
+  key: string;
+  title: string;
+  logoUrl: string | null;
+  matches: Match[];
 };
 
-function H2HMatchRow({
-  item,
-  perspectiveTeamAId,
-  index,
-}: {
-  item: Match;
-  perspectiveTeamAId: string;
-  index: number;
-}) {
-  const isAHome = item.team_a_id === perspectiveTeamAId;
-  const left = isAHome ? item.teams_a : item.teams_b;
-  const right = isAHome ? item.teams_b : item.teams_a;
-  const scoreLeft = isAHome ? (item.score_a ?? 0) : (item.score_b ?? 0);
-  const scoreRight = isAHome ? (item.score_b ?? 0) : (item.score_a ?? 0);
-  const comp =
-    item.phases?.competition_editions?.competitions?.short_name ??
-    item.phases?.competition_editions?.competitions?.full_name;
-  const result = getH2HResult(item, perspectiveTeamAId);
-
+function teamSigla(team: Team | null | undefined): string {
   return (
-    <Link href={`/jogos/${item.id}`} className="match-h2h-row">
-      <div className="match-h2h-row-meta">
-        {result && (
-          <span
-            className={`match-h2h-result match-h2h-result--${result}`}
-            title={
-              result === "win"
-                ? "Vitória"
-                : result === "loss"
-                  ? "Derrota"
-                  : "Empate"
-            }
-          >
-            {H2H_RESULT_LABEL[result]}
-          </span>
-        )}
-        <span className="match-h2h-row-date">
-          {formatMatchDateTime(item.match_date, item.match_time)}
-        </span>
-        {comp && <span className="match-h2h-row-comp">{comp}</span>}
-        <span className="match-h2h-row-phase">{formatMatchPhaseRoundLabel(item)}</span>
-      </div>
-      <div className="match-h2h-row-body">
-        <div className="match-h2h-team">
-          <TeamLogo team={left} index={index * 2} size={24} />
-          <span className="truncate">{left?.short_name ?? left?.full_name}</span>
-        </div>
-        <span className="match-h2h-score tabular-nums">
-          {scoreLeft}
-          <span className="match-h2h-score-sep">-</span>
-          {scoreRight}
-        </span>
-        <div className="match-h2h-team match-h2h-team--away">
-          <span className="truncate">{right?.short_name ?? right?.full_name}</span>
-          <TeamLogo team={right} index={index * 2 + 1} size={24} />
-        </div>
-      </div>
-    </Link>
+    team?.abbreviation?.trim() ||
+    team?.short_name?.trim() ||
+    team?.full_name?.trim()?.slice(0, 3).toUpperCase() ||
+    "—"
   );
+}
+
+function editionTitle(m: Match): string {
+  const edition = m.phases?.competition_editions;
+  const competition =
+    edition?.competitions?.short_name?.trim() ||
+    edition?.competitions?.full_name?.trim() ||
+    "Competição";
+  const seasons = edition?.seasons;
+  const editionName =
+    edition?.custom_name?.trim() ||
+    (Array.isArray(seasons)
+      ? seasons[0]?.name?.trim()
+      : seasons?.name?.trim()) ||
+    null;
+  return editionName ? `${competition} · ${editionName}` : competition;
+}
+
+function editionKey(m: Match): string {
+  return m.phases?.edition_id || m.phases?.competition_editions?.id || "—";
+}
+
+function groupByEdition(matches: Match[]): EditionGroup[] {
+  const map = new Map<string, EditionGroup>();
+
+  for (const row of matches) {
+    const key = editionKey(row);
+    const existing = map.get(key);
+    if (existing) {
+      existing.matches.push(row);
+      continue;
+    }
+    map.set(key, {
+      key,
+      title: editionTitle(row),
+      logoUrl: row.phases?.competition_editions?.competitions?.logo_url ?? null,
+      matches: [row],
+    });
+  }
+
+  return [...map.values()].sort((a, b) => {
+    const dateA = a.matches[0]?.match_date ?? "";
+    const dateB = b.matches[0]?.match_date ?? "";
+    return dateB.localeCompare(dateA);
+  });
 }
 
 export function MatchH2HPanel({
   match,
   h2hMatches,
-  nextGameA,
-  nextGameB,
-  teamAId,
-  teamBId,
+  upcomingA,
+  upcomingB,
 }: MatchH2HPanelProps) {
-  const summary = buildMatchH2H(h2hMatches, teamAId, teamBId, match.id);
-  const nameA = match.teams_a?.short_name ?? match.teams_a?.full_name ?? "A";
-  const nameB = match.teams_b?.short_name ?? match.teams_b?.full_name ?? "B";
-  const total = summary.teamAWins + summary.teamBWins + summary.draws;
+  const [mode, setMode] = useState<"upcoming" | "h2h">("upcoming");
+  const [teamSide, setTeamSide] = useState<"a" | "b">("a");
+  const [h2hScope, setH2hScope] = useState<"competition" | "all">(
+    "competition",
+  );
+
+  const brand =
+    match.phases?.competition_editions?.competitions?.primary_color ??
+    "var(--color-brand)";
+  const competitionId =
+    match.phases?.competition_editions?.competitions?.id ?? null;
+
+  const filteredH2H = useMemo(() => {
+    const base =
+      h2hScope === "competition" && competitionId
+        ? h2hMatches.filter(
+            (m) =>
+              m.phases?.competition_editions?.competitions?.id ===
+              competitionId,
+          )
+        : h2hMatches;
+    return [...base].sort((a, b) =>
+      (b.match_date ?? "").localeCompare(a.match_date ?? ""),
+    );
+  }, [h2hMatches, h2hScope, competitionId]);
+
+  const h2hGroups = useMemo(
+    () => groupByEdition(filteredH2H),
+    [filteredH2H],
+  );
+
+  const upcoming = teamSide === "a" ? upcomingA : upcomingB;
+  const teamAccent =
+    (teamSide === "a"
+      ? match.teams_a?.primary_color
+      : match.teams_b?.primary_color) || brand;
 
   return (
-    <div className="match-partidas">
-      <section className="match-partidas-section">
-        <h2 className="match-partidas-heading">Próximo jogo</h2>
-        <div className="match-next-games-grid">
-          <MatchNextGameCard
-            team={match.teams_a}
-            teamId={teamAId}
-            nextGame={nextGameA}
-            index={0}
+    <div className="match-partidas-app">
+      <div className="match-partidas-switches">
+        <PillStepper
+          items={[
+            { id: "upcoming", label: "Próximos jogos" },
+            { id: "h2h", label: "H-2-H" },
+          ]}
+          selectedId={mode}
+          onSelect={(id) => setMode(id as "upcoming" | "h2h")}
+          accentColor={brand}
+          ariaLabel="Modo da aba partidas"
+        />
+
+        {mode === "upcoming" ? (
+          <PillStepper
+            items={[
+              {
+                id: "a",
+                label: `${teamSigla(match.teams_a)}`,
+              },
+              {
+                id: "b",
+                label: `${teamSigla(match.teams_b)}`,
+              },
+            ]}
+            selectedId={teamSide}
+            onSelect={(id) => setTeamSide(id as "a" | "b")}
+            accentColor={teamAccent}
+            ariaLabel="Equipe"
+            compact
           />
-          <MatchNextGameCard
-            team={match.teams_b}
-            teamId={teamBId}
-            nextGame={nextGameB}
-            index={1}
+        ) : (
+          <PillStepper
+            items={[
+              { id: "competition", label: "Nesta competição" },
+              { id: "all", label: "Todas" },
+            ]}
+            selectedId={h2hScope}
+            onSelect={(id) => setH2hScope(id as "competition" | "all")}
+            accentColor={brand}
+            ariaLabel="Escopo H2H"
           />
+        )}
+      </div>
+
+      {mode === "upcoming" ? (
+        <div className="match-partidas-team-hint">
+          <TeamLogo
+            team={teamSide === "a" ? match.teams_a : match.teams_b}
+            index={teamSide === "a" ? 0 : 1}
+            size={28}
+          />
+          <span>
+            {teamSide === "a"
+              ? (match.teams_a?.short_name ?? match.teams_a?.full_name)
+              : (match.teams_b?.short_name ?? match.teams_b?.full_name)}
+          </span>
         </div>
-      </section>
+      ) : null}
 
-      <section className="match-partidas-section">
-        <h2 className="match-partidas-heading">Confronto direto (H2H)</h2>
-        <div className="match-h2h">
-          <div className="match-h2h-summary">
-            <div className="match-h2h-summary-team">
-              <TeamLogo team={match.teams_a} index={0} size={36} />
-              <span className="match-h2h-summary-name">{nameA}</span>
-              <span className="match-h2h-summary-wins tabular-nums">
-                {summary.teamAWins}
-              </span>
-              <span className="match-h2h-summary-label">vitórias</span>
-            </div>
-
-            <div className="match-h2h-summary-center">
-              <span className="match-h2h-summary-draws tabular-nums">
-                {summary.draws}
-              </span>
-              <span className="match-h2h-summary-label">empates</span>
-              {total > 0 && (
-                <span className="match-h2h-summary-goals tabular-nums">
-                  {summary.teamAGoals}:{summary.teamBGoals}
-                </span>
-              )}
-            </div>
-
-            <div className="match-h2h-summary-team match-h2h-summary-team--away">
-              <TeamLogo team={match.teams_b} index={1} size={36} />
-              <span className="match-h2h-summary-name">{nameB}</span>
-              <span className="match-h2h-summary-wins tabular-nums">
-                {summary.teamBWins}
-              </span>
-              <span className="match-h2h-summary-label">vitórias</span>
-            </div>
-          </div>
-
-          {summary.matches.length ? (
-            <ul className="match-h2h-list">
-              {summary.matches.map((item, index) => (
-                <li key={item.id}>
-                  <H2HMatchRow
-                    item={item}
-                    perspectiveTeamAId={teamAId}
-                    index={index}
-                  />
-                </li>
-              ))}
-            </ul>
+      <div className="match-partidas-list">
+        {mode === "upcoming" ? (
+          upcoming.length ? (
+            upcoming.map((row, index) => (
+              <MatchCard key={row.id} match={row} index={index} />
+            ))
           ) : (
-            <p className="match-empty-state">
-              Ainda não há confrontos finalizados entre estes times.
-            </p>
-          )}
-
-          {isMatchFinished(match.status) && total === 0 && h2hMatches.length === 0 && (
-            <p className="match-empty-state match-empty-state--sub">
-              Este pode ser o primeiro duelo registrado.
-            </p>
-          )}
-        </div>
-      </section>
+            <p className="match-empty-state">Sem próximos jogos</p>
+          )
+        ) : h2hGroups.length ? (
+          h2hGroups.map((group) => (
+            <section key={group.key} className="match-partidas-group">
+              <header className="match-partidas-group-head">
+                {group.logoUrl ? (
+                  <OrgImage
+                    src={group.logoUrl}
+                    alt=""
+                    width={22}
+                    height={22}
+                    className="match-partidas-group-logo"
+                  />
+                ) : null}
+                <h3 className="match-partidas-group-title">{group.title}</h3>
+              </header>
+              {group.matches.map((row, index) => (
+                <MatchCard key={row.id} match={row} index={index} />
+              ))}
+            </section>
+          ))
+        ) : (
+          <p className="match-empty-state">Sem confrontos anteriores</p>
+        )}
+      </div>
     </div>
   );
 }

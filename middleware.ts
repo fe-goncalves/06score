@@ -1,13 +1,26 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Links antigos / partidas → rota atual /jogos
+  const legacyMatch = pathname.match(/^\/partidas\/([^/]+)\/?$/);
+  if (legacyMatch) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/jogos/${legacyMatch[1]}`;
+    return NextResponse.redirect(url, 308);
+  }
+
   const host = request.headers.get("host") ?? "";
   const hostname = host.split(":")[0];
 
   if (
     hostname === "localhost" ||
     hostname === "127.0.0.1" ||
-    hostname.endsWith(".localhost")
+    hostname.endsWith(".localhost") ||
+    // Cloudflare preview hosts — use NEXT_PUBLIC_ORG_SLUG, not worker name as org
+    hostname.endsWith(".workers.dev") ||
+    hostname.endsWith(".pages.dev")
   ) {
     return NextResponse.next();
   }

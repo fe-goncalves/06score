@@ -20,10 +20,18 @@ function unwrapVenue(
   if (!row?.id) return null;
   const label = row.full_name?.trim() || row.short_name?.trim();
   if (!label) return null;
-  return { id: row.id, full_name: label, address: row.address ?? undefined };
+  return {
+    id: row.id,
+    full_name: label,
+    address: row.address ?? undefined,
+    logo_url:
+      "logo_url" in row
+        ? ((row as { logo_url?: string | null }).logo_url ?? null)
+        : null,
+  };
 }
 
-const VENUE_SELECT = "id, full_name, address, city, state";
+const VENUE_SELECT = "id, full_name, address, logo_url";
 
 /** Arena embarcada via `venues!teams_home_venue_id_fkey`. */
 export function venueFromTeamEmbed(

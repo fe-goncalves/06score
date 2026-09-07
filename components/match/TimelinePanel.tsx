@@ -12,6 +12,7 @@ import {
   isPenaltyGoalType,
   isPenaltyMissedActionType,
   isPeriodFoulSummaryAction,
+  isShootoutGoalType,
   isStrictGoalActionType,
   resolveActionPeriod,
   timelineDisplayLabel,
@@ -55,30 +56,27 @@ function playerLabel(entry: TimelineEntry): string {
 
 function eventSubline(entry: TimelineEntry): string | null {
   if (isPenaltyMissedActionType(entry.action_type)) {
-    return timelineDisplayLabel(entry.action_type, entry.miss_result);
+    return timelineDisplayLabel(
+      entry.action_type,
+      entry.miss_result,
+      entry.goal_type,
+    );
   }
   return null;
 }
 
 function TimelineGoalMarkers({ entry }: { entry: TimelineEntry }) {
-  const isPenalty = isPenaltyGoalType(entry.goal_type);
+  const isPenaltyOrShootout =
+    isPenaltyGoalType(entry.goal_type) || isShootoutGoalType(entry.goal_type);
   const score = `${entry.score_a}:${entry.score_b}`;
 
   return (
     <span className="match-timeline-goal-markers">
       <MatchEventIcon
         action={entry}
-        iconKind="ball"
+        iconKind={isPenaltyOrShootout ? "penalty" : "goal"}
         className="match-timeline-icon"
       />
-      {isPenalty && (
-        <MatchEventIcon
-          action={entry}
-          iconKind="penalty"
-          className="match-timeline-icon match-timeline-icon--pen"
-          size={14}
-        />
-      )}
       <span className="match-timeline-score match-timeline-score--goal tabular-nums">
         {score}
       </span>
@@ -124,6 +122,7 @@ function TimelineRow({
 }) {
   const surname = playerLabel(entry);
   const isGoal = isStrictGoalActionType(entry.action_type);
+  const isMiss = isPenaltyMissedActionType(entry.action_type);
 
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     onOpen(entry, e.currentTarget);
@@ -138,9 +137,14 @@ function TimelineRow({
   const copy = (
     <div className="match-timeline-copy">
       <span className="match-timeline-player">{surname}</span>
-      {subline && (
+      {isMiss && subline ? (
+        <span className="match-timeline-event-subline match-timeline-miss-line">
+          {subline}
+        </span>
+      ) : null}
+      {!isMiss && subline ? (
         <span className="match-timeline-event-subline">{subline}</span>
-      )}
+      ) : null}
       {isGoal && assistSurname && (
         <span className="match-timeline-assist-line">
           <MatchEventIcon

@@ -1,18 +1,24 @@
 import type { TabItem } from "@/components/ui/PageTabs";
 
+export const TEAM_TAB_HUB = "hub";
 export const TEAM_TAB_ELENCO = "elenco";
 export const TEAM_TAB_PARTIDAS = "partidas";
 export const TEAM_TAB_DETALHES = "detalhes";
+export const TEAM_TAB_ESTATISTICAS = "estatisticas";
+export const TEAM_TAB_HISTORICO = "historico";
+export const TEAM_TAB_HALL = "hall";
 
 export const TEAM_TABS: TabItem[] = [
-  { id: TEAM_TAB_ELENCO, label: "ELENCO ATUAL" },
-  { id: "estatisticas", label: "ESTATÍSTICAS" },
+  { id: TEAM_TAB_HUB, label: "HUB" },
+  { id: TEAM_TAB_ELENCO, label: "ELENCO" },
   { id: TEAM_TAB_PARTIDAS, label: "PARTIDAS" },
-  { id: "historico", label: "HISTÓRICO" },
+  { id: TEAM_TAB_ESTATISTICAS, label: "ESTATÍSTICAS" },
+  { id: TEAM_TAB_HISTORICO, label: "HISTÓRICO" },
+  { id: TEAM_TAB_HALL, label: "HALL" },
   { id: TEAM_TAB_DETALHES, label: "DETALHES" },
 ];
 
-export const DEFAULT_TEAM_TAB = TEAM_TAB_ELENCO;
+export const DEFAULT_TEAM_TAB = TEAM_TAB_HUB;
 
 const TAB_IDS = new Set(TEAM_TABS.map((t) => t.id));
 

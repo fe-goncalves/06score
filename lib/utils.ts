@@ -32,7 +32,7 @@ export function formatMatchDateTime(
   return `${datePart} · ${timePart}`;
 }
 
-/** Fase e rodada para listagens compactas de jogos. */
+/** Fase e rodada para listagens compactas de jogos (inclui mata-mata via matchup). */
 export function formatMatchPhaseRoundLabel(match: {
   phases: {
     custom_label?: string | null;
@@ -42,12 +42,34 @@ export function formatMatchPhaseRoundLabel(match: {
     custom_label?: string | null;
     name?: string;
   } | null;
+  matchups?: {
+    round_label?: string | null;
+  } | null;
 }): string {
   const phaseName =
-    match.phases?.custom_label ?? match.phases?.full_name ?? "";
+    match.phases?.custom_label?.trim() ||
+    match.phases?.full_name?.trim() ||
+    "";
   const roundName =
-    match.rounds?.custom_label ?? match.rounds?.name ?? "";
-  return [phaseName, roundName].filter(Boolean).join(" · ") || "—";
+    match.rounds?.custom_label?.trim() ||
+    match.rounds?.name?.trim() ||
+    match.matchups?.round_label?.trim() ||
+    "";
+  if (phaseName && roundName) {
+    const same =
+      phaseName.localeCompare(roundName, "pt-BR", { sensitivity: "accent" }) ===
+      0;
+    return same ? phaseName : `${phaseName} · ${roundName}`;
+  }
+  return phaseName || roundName || "—";
+}
+
+/** Data compacta para a barra de jogos (ex.: "01/10"). */
+export function formatMatchStripDate(matchDate: string): string {
+  const date = new Date(`${matchDate}T12:00:00`);
+  const day = date.toLocaleDateString("pt-BR", { day: "2-digit" });
+  const month = date.toLocaleDateString("pt-BR", { month: "2-digit" });
+  return `${day}/${month}`;
 }
 
 /** Data em destaque para cards compactos do hero (ex.: "30 DE MAI · 05:00"). */
@@ -214,8 +236,9 @@ export function getPositionName(
 }
 
 export function formatRating(value: number | null | undefined): string {
-  if (value == null) return "—";
-  return value.toFixed(1);
+  if (value == null || !Number.isFinite(value)) return "—";
+  const v = Math.round(value * 10) / 10;
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
 }
 
 export function getActionIcon(actionType: string): string {
@@ -418,6 +441,8 @@ export const PHASE_SELECT = `
   competition_editions!phases_edition_id_fkey(
     id,
     is_current,
+    custom_name,
+    ratings_are_public,
     seasons ( id, name ),
     competitions!competition_editions_competition_id_fkey(
       id,
@@ -442,6 +467,9 @@ export const MATCH_SELECT_BASE = `
   status,
   score_a,
   score_b,
+  finish_type,
+  penalty_score_a,
+  penalty_score_b,
   teams_a:teams!matches_team_a_id_fkey(id, full_name, short_name, abbreviation, logo_url, primary_color),
   teams_b:teams!matches_team_b_id_fkey(id, full_name, short_name, abbreviation, logo_url, primary_color),
   phases(${PHASE_SELECT.replace(/\n/g, " ")}),

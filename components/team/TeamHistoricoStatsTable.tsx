@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { AthleteHubFilter } from "@/components/athlete/AthleteHubFilter";
+import { MatchIcon } from "@/components/match/icons/MatchIcon";
 import { OrgLogo } from "@/components/ui/OrgLogo";
 import {
   SortableStatTh,
@@ -340,6 +341,8 @@ export function TeamHistoricoStatsTable({
                 <SortableStatTh
                   key={col.abbr}
                   abbr={col.abbr}
+                  label={col.label}
+                  icon={col.icon}
                   sortKey={col.sortKey}
                   activeSortKey={sortKey}
                   direction={sortDir}
@@ -440,9 +443,20 @@ export function TeamHistoricoStatsTable({
       <div className="athlete-stats-legend">
         <p className="athlete-stats-legend-title">Legenda</p>
         <ul className="athlete-stats-legend-list">
-          {TEAM_STATS_COLUMNS.map(({ abbr, label }) => (
+          {TEAM_STATS_COLUMNS.map(({ abbr, label, icon }) => (
             <li key={abbr}>
-              <span className="athlete-stats-legend-abbr">{abbr}</span>
+              <span className="athlete-stats-legend-abbr">
+                {icon ? (
+                  <MatchIcon
+                    name={icon}
+                    size={14}
+                    className="athlete-stats-legend-icon"
+                    tinted
+                  />
+                ) : (
+                  abbr
+                )}
+              </span>
               <span className="athlete-stats-legend-desc">{label}</span>
             </li>
           ))}

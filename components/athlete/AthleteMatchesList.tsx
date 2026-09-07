@@ -1,13 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AthleteCompetitionFilter } from "@/components/athlete/AthleteCompetitionFilter";
-import { isAssistActionType } from "@/lib/match/actionTypes";
+import { CompetitionGalleryMatchCard } from "@/components/competition/CompetitionGalleryMatchCard";
+import { MatchEventIcon } from "@/components/match/icons/MatchEventIcon";
+import {
+  isRedCardActionType,
+  isStrictGoalActionType,
+  isYellowCardActionType,
+  isYellowRedCardActionType,
+} from "@/lib/match/actionTypes";
+import {
+  resolveMatchIconKind,
+  type MatchIconKind,
+} from "@/lib/match/icons";
 import type { AthleteProfileData, Competition, Match, Team } from "@/lib/types";
 import { isMatchFinished } from "@/lib/utils";
 
-type MatchTeam = Pick<Team, "id" | "short_name" | "full_name" | "logo_url"> | null | undefined;
+type MatchTeam = Pick<
+  Team,
+  "id" | "short_name" | "full_name" | "logo_url" | "abbreviation"
+> | null | undefined;
+
+const TEAM_PAGE_SIZE = 10;
+
+const ATHLETE_ROW_ICON_KINDS = new Set<MatchIconKind>([
+  "ball",
+  "goal",
+  "penalty",
+  "yellowCard",
+  "redCard",
+  "yellowRedCard",
+]);
 
 /** Garante linha 1 = mandante (team_a) e linha 2 = visitante (team_b), com placar alinhado. */
 function resolveMatchSides(match: Match) {
@@ -41,7 +66,7 @@ function formatShortDate(isoDate: string): string {
   return `${dd}/${mm}/${yy}`;
 }
 
-function teamDisplayName(
+function teamShortName(
   team:
     | {
         short_name?: string | null;
@@ -54,17 +79,53 @@ function teamDisplayName(
   return team?.short_name?.trim() || team?.full_name?.trim() || fallback;
 }
 
-function getMatchEvents(
+function teamAbbreviation(
+  team:
+    | {
+        abbreviation?: string | null;
+        short_name?: string | null;
+        full_name?: string;
+      }
+    | null
+    | undefined,
+  fallback: string,
+): string {
+  return (
+    team?.abbreviation?.trim() ||
+    team?.short_name?.trim()?.slice(0, 3).toUpperCase() ||
+    team?.full_name?.trim()?.slice(0, 3).toUpperCase() ||
+    fallback
+  );
+}
+
+function editionSeasonLabel(
+  seasons:
+    | { name?: string | null }
+    | { name?: string | null }[]
+    | null
+    | undefined,
+): string {
+  if (!seasons) return "";
+  const season = Array.isArray(seasons) ? seasons[0] : seasons;
+  return season?.name?.trim() || "";
+}
+
+function athleteActionIcons(
   actions: AthleteProfileData["recentMatches"][number]["actions"],
-) {
-  return {
-    goals: actions.filter((a) => a.action_type === "goal" && !a.is_own_goal).length,
-    assists: actions.filter((a) => isAssistActionType(a.action_type)).length,
-    yellowCards: actions.filter((a) => a.action_type === "yellow_card").length,
-    redCards: actions.filter(
-      (a) => a.action_type === "red_card" || a.action_type === "yellow_red_card",
-    ).length,
-  };
+): MatchIconKind[] {
+  const kinds: MatchIconKind[] = [];
+  for (const action of actions) {
+    const isGoal =
+      isStrictGoalActionType(action.action_type) && !action.is_own_goal;
+    const isCard =
+      isYellowCardActionType(action.action_type) ||
+      isRedCardActionType(action.action_type) ||
+      isYellowRedCardActionType(action.action_type);
+    if (!isGoal && !isCard) continue;
+    const kind = resolveMatchIconKind(action);
+    if (ATHLETE_ROW_ICON_KINDS.has(kind)) kinds.push(kind);
+  }
+  return kinds;
 }
 
 function ratingTone(rating: number | null): string {
@@ -90,6 +151,8 @@ interface AthleteMatchesListProps {
   emptyEditionFilterMessage?: string;
   /** Exibe filtro por edição após escolher uma competição (página do time). */
   enableEditionFilter?: boolean;
+  /** Layout da linha de partida: atleta (padrão) ou time (Partidas do time). */
+  variant?: "athlete" | "team";
 }
 
 export function AthleteMatchesList({
@@ -99,9 +162,11 @@ export function AthleteMatchesList({
   emptyFilterMessage = "Nenhuma partida nesta competição.",
   emptyEditionFilterMessage = "Nenhuma partida nesta edição.",
   enableEditionFilter = false,
+  variant = "athlete",
 }: AthleteMatchesListProps) {
   const [competitionId, setCompetitionId] = useState("all");
   const [editionId, setEditionId] = useState("all");
+  const [page, setPage] = useState(0);
 
   const sorted = useMemo(
     () =>
@@ -139,7 +204,7 @@ export function AthleteMatchesList({
       const comp = edition?.competitions;
       if (comp?.id !== competitionId || !edition?.id) continue;
       if (map.has(edition.id)) continue;
-      const season = edition.seasons?.name?.trim();
+      const season = editionSeasonLabel(edition.seasons);
       map.set(edition.id, {
         id: edition.id,
         label: season || "Edição",
@@ -167,7 +232,11 @@ export function AthleteMatchesList({
     return list;
   }, [sorted, competitionId, editionId, enableEditionFilter]);
 
-  /** Grupos na ordem da partida mais recente de cada competição */
+  useEffect(() => {
+    setPage(0);
+  }, [competitionId, editionId, filtered.length]);
+
+  /** Grupos na ordem da partida mais recente de cada competição (variante atleta). */
   const grouped = useMemo(() => {
     const groups: { competition: CompetitionInfo; matches: MatchItem[] }[] = [];
     const indexByKey = new Map<string, number>();
@@ -197,16 +266,28 @@ export function AthleteMatchesList({
       );
   }, [filtered]);
 
+  const teamPageCount = Math.max(1, Math.ceil(filtered.length / TEAM_PAGE_SIZE));
+  const safePage = Math.min(page, teamPageCount - 1);
+  const teamPageItems = useMemo(() => {
+    if (variant !== "team") return [];
+    const start = safePage * TEAM_PAGE_SIZE;
+    return filtered.slice(start, start + TEAM_PAGE_SIZE);
+  }, [variant, filtered, safePage]);
+
   if (matches.length === 0) {
     return (
-      <section className={`athlete-matches-panel ${className}`.trim()}>
+      <section
+        className={`athlete-matches-panel ${variant === "team" ? "athlete-matches-panel--team" : ""} ${className}`.trim()}
+      >
         <p className="athlete-matches-empty">{emptyMessage}</p>
       </section>
     );
   }
 
   return (
-    <section className={`athlete-matches-panel ${className}`.trim()}>
+    <section
+      className={`athlete-matches-panel ${variant === "team" ? "athlete-matches-panel--team" : ""} ${className}`.trim()}
+    >
       <div className="athlete-matches-toolbar athlete-matches-toolbar--inline">
         <AthleteCompetitionFilter
           value={competitionId}
@@ -239,6 +320,50 @@ export function AthleteMatchesList({
               ? emptyFilterMessage
               : emptyMessage}
         </p>
+      ) : variant === "team" ? (
+        <>
+          <ul className="athlete-matches-card-list athlete-matches-card-list--flat">
+            {teamPageItems.map(({ match }) => (
+              <li key={match.id} className="athlete-match-gallery-item">
+                <CompetitionGalleryMatchCard
+                  match={match}
+                  index={0}
+                  accentColor={
+                    match.phases?.competition_editions?.competitions
+                      ?.primary_color ?? undefined
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+          {filtered.length > TEAM_PAGE_SIZE ? (
+            <div className="athlete-matches-pager">
+              <button
+                type="button"
+                className="athlete-matches-pager-btn"
+                aria-label="Página anterior"
+                disabled={safePage <= 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                ‹
+              </button>
+              <span className="athlete-matches-pager-label">
+                {safePage + 1}/{teamPageCount}
+              </span>
+              <button
+                type="button"
+                className="athlete-matches-pager-btn"
+                aria-label="Próxima página"
+                disabled={safePage >= teamPageCount - 1}
+                onClick={() =>
+                  setPage((p) => Math.min(teamPageCount - 1, p + 1))
+                }
+              >
+                ›
+              </button>
+            </div>
+          ) : null}
+        </>
       ) : (
         <div className="athlete-matches-cards">
           {grouped.map((group) => (
@@ -265,110 +390,130 @@ export function AthleteMatchesList({
 
               <ul className="athlete-matches-card-list">
                 {group.matches.map(({ match, rating, actions }) => {
-                  const events = getMatchEvents(actions);
                   const finished = isMatchFinished(match.status);
                   const sides = resolveMatchSides(match);
                   const scoreA = finished ? (sides.scoreA ?? 0) : null;
                   const scoreB = finished ? (sides.scoreB ?? 0) : null;
+                  const aLost =
+                    finished &&
+                    scoreA != null &&
+                    scoreB != null &&
+                    scoreA < scoreB;
+                  const bLost =
+                    finished &&
+                    scoreA != null &&
+                    scoreB != null &&
+                    scoreB < scoreA;
+                  const icons = athleteActionIcons(actions);
+                  const athleteTeamId = match.athlete_team_id ?? null;
+                  const onTeamA =
+                    athleteTeamId != null && athleteTeamId === sides.teamA?.id;
+                  const onTeamB =
+                    athleteTeamId != null && athleteTeamId === sides.teamB?.id;
+                  const actionsOnA = onTeamA || (!onTeamA && !onTeamB);
+                  const actionsOnB = onTeamB;
+
+                  const actionIcons = (
+                    <span className="athlete-match-hub-actions" aria-hidden>
+                      {icons.map((kind, index) => (
+                        <MatchEventIcon
+                          key={`${kind}-${index}`}
+                          action={{ action_type: "goal" }}
+                          iconKind={kind}
+                          size={14}
+                          className="athlete-match-hub-action-icon"
+                        />
+                      ))}
+                    </span>
+                  );
 
                   return (
                     <li key={match.id}>
                       <Link
                         href={`/jogos/${match.id}`}
-                        className="athlete-match-row"
+                        className="athlete-match-row athlete-match-row--hub"
                       >
-                        <div className="athlete-match-main">
-                          <div className="athlete-match-meta">
-                            <span className="athlete-match-date">
-                              {formatShortDate(match.match_date)}
-                            </span>
-                            <span className="athlete-match-status">
-                              {finished ? "FT" : match.match_time ?? "AG"}
-                            </span>
-                          </div>
+                        <div className="athlete-match-hub-meta">
+                          <span className="athlete-match-hub-date">
+                            {formatShortDate(match.match_date)}
+                          </span>
+                        </div>
 
-                          <div className="athlete-match-body">
-                          <div className="athlete-match-line">
+                        <div className="athlete-match-hub-body">
+                          <div
+                            className={`athlete-match-hub-side ${aLost ? "athlete-match-hub-side--lost" : ""}`}
+                          >
                             {sides.teamA?.logo_url ? (
                               <img
                                 src={sides.teamA.logo_url}
                                 alt=""
-                                className="athlete-match-team-logo"
+                                className="athlete-match-hub-logo"
                               />
                             ) : (
-                              <span className="athlete-match-team-logo athlete-match-team-logo--ph" />
+                              <span className="athlete-match-hub-logo athlete-match-hub-logo--ph" />
                             )}
-                            <span className="athlete-match-team-name">
-                              {teamDisplayName(sides.teamA, "Time A")}
+                            <span className="athlete-match-hub-name">
+                              <span className="athlete-match-hub-name-short">
+                                {teamShortName(sides.teamA, "Time A")}
+                              </span>
+                              <span className="athlete-match-hub-name-abbr">
+                                {teamAbbreviation(sides.teamA, "A")}
+                              </span>
+                            </span>
+                            {actionsOnA ? actionIcons : (
+                              <span className="athlete-match-hub-actions athlete-match-hub-actions--spacer" aria-hidden />
+                            )}
+                            <span
+                              className={`athlete-match-hub-score ${aLost ? "athlete-match-hub-score--lost" : ""}`}
+                            >
+                              {scoreA != null ? scoreA : "–"}
                             </span>
                           </div>
-                          <div className="athlete-match-line">
+
+                          <div
+                            className={`athlete-match-hub-side ${bLost ? "athlete-match-hub-side--lost" : ""}`}
+                          >
                             {sides.teamB?.logo_url ? (
                               <img
                                 src={sides.teamB.logo_url}
                                 alt=""
-                                className="athlete-match-team-logo"
+                                className="athlete-match-hub-logo"
                               />
                             ) : (
-                              <span className="athlete-match-team-logo athlete-match-team-logo--ph" />
+                              <span className="athlete-match-hub-logo athlete-match-hub-logo--ph" />
                             )}
-                            <span className="athlete-match-team-name">
-                              {teamDisplayName(sides.teamB, "Time B")}
-                            </span>
-                          </div>
-                          </div>
-                        </div>
-
-                        <div className="athlete-match-trailing">
-                          <div className="athlete-match-events">
-                            {events.goals > 0 && (
-                              <span className="athlete-match-event" title="Gols">
-                                ⚽{events.goals > 1 ? events.goals : ""}
+                            <span className="athlete-match-hub-name">
+                              <span className="athlete-match-hub-name-short">
+                                {teamShortName(sides.teamB, "Time B")}
                               </span>
-                            )}
-                            {events.assists > 0 && (
-                              <span
-                                className="athlete-match-event"
-                                title="Assistências"
-                              >
-                                👟{events.assists > 1 ? events.assists : ""}
+                              <span className="athlete-match-hub-name-abbr">
+                                {teamAbbreviation(sides.teamB, "B")}
                               </span>
-                            )}
-                            {events.yellowCards > 0 && (
-                              <span
-                                className="athlete-match-event athlete-match-event--card"
-                                title="Cartão amarelo"
-                              />
-                            )}
-                            {events.redCards > 0 && (
-                              <span
-                                className="athlete-match-event athlete-match-event--card athlete-match-event--red"
-                                title="Cartão vermelho"
-                              />
-                            )}
-                          </div>
-                          <div className="athlete-match-scores">
-                            <span className="athlete-match-score-val">
-                              {scoreA != null ? scoreA : "–"}
                             </span>
-                            <span className="athlete-match-score-val">
+                            {actionsOnB ? actionIcons : (
+                              <span className="athlete-match-hub-actions athlete-match-hub-actions--spacer" aria-hidden />
+                            )}
+                            <span
+                              className={`athlete-match-hub-score ${bLost ? "athlete-match-hub-score--lost" : ""}`}
+                            >
                               {scoreB != null ? scoreB : "–"}
                             </span>
                           </div>
-                          <div
-                            className="athlete-match-rating"
-                            aria-label={
-                              rating != null
-                                ? `Nota ${rating.toFixed(1)}`
-                                : "Sem nota"
-                            }
+                        </div>
+
+                        <div
+                          className="athlete-match-rating"
+                          aria-label={
+                            rating != null
+                              ? `Nota ${rating.toFixed(1)}`
+                              : "Sem nota"
+                          }
+                        >
+                          <span
+                            className={`athlete-match-rating-badge ${ratingTone(rating)}`}
                           >
-                            <span
-                              className={`athlete-match-rating-badge ${ratingTone(rating)}`}
-                            >
-                              {rating != null ? rating.toFixed(1) : "—"}
-                            </span>
-                          </div>
+                            {rating != null ? rating.toFixed(1) : "-"}
+                          </span>
                         </div>
                       </Link>
                     </li>

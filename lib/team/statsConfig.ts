@@ -1,7 +1,11 @@
+import type { MatchIconName } from "@/components/match/icons/MatchIcon";
+
 export interface TeamStatsColumnDef {
   abbr: string;
   label: string;
   sortKey: TeamCompetitionStatSortKey;
+  /** Ícone oficial (`arq/svg`) no cabeçalho / legenda. */
+  icon?: MatchIconName;
 }
 
 export type TeamCompetitionStatSortKey =
@@ -16,15 +20,15 @@ export type TeamCompetitionStatSortKey =
   | "red_cards";
 
 export const TEAM_STATS_COLUMNS: TeamStatsColumnDef[] = [
-  { abbr: "JOG", label: "Jogos disputados", sortKey: "matches_played" },
+  { abbr: "JOG", label: "Jogos disputados", sortKey: "matches_played", icon: "stadium" },
   { abbr: "VIT", label: "Vitórias", sortKey: "wins" },
   { abbr: "EMP", label: "Empates", sortKey: "draws" },
   { abbr: "DER", label: "Derrotas", sortKey: "losses" },
-  { abbr: "GP", label: "Gols pró", sortKey: "goals_scored" },
-  { abbr: "GC", label: "Gols contra", sortKey: "goals_conceded" },
+  { abbr: "GP", label: "Gols pró", sortKey: "goals_scored", icon: "ballGoal" },
+  { abbr: "GC", label: "Gols contra", sortKey: "goals_conceded", icon: "ball" },
   { abbr: "SG", label: "Saldo de gols", sortKey: "goal_difference" },
-  { abbr: "AMA", label: "Cartões amarelos", sortKey: "yellow_cards" },
-  { abbr: "VER", label: "Cartões vermelhos", sortKey: "red_cards" },
+  { abbr: "AMA", label: "Cartões amarelos", sortKey: "yellow_cards", icon: "yellowCard" },
+  { abbr: "VER", label: "Cartões vermelhos", sortKey: "red_cards", icon: "redCard" },
 ];
 
 export type TeamAthleteStatSortKey =

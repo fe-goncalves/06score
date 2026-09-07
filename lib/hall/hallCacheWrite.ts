@@ -26,7 +26,7 @@ export async function hallCategoryToCacheItems(
     teamIds.length
       ? supabase
           .from("teams")
-          .select("id, full_name, logo_url")
+          .select("id, full_name, logo_url, abbreviation")
           .in("id", teamIds)
           .eq("is_virtual", false)
       : Promise.resolve({ data: [] }),
@@ -54,12 +54,15 @@ export async function hallCategoryToCacheItems(
         full_name: String(athlete.full_name ?? ""),
         surname: (athlete.surname as string | null) ?? null,
         photo_url: (athlete.photo_url as string | null) ?? null,
+        team_logo: entry.team_logo ?? null,
+        team_name: entry.team_name ?? null,
       };
     } else if (team) {
       item.team = {
         id: team.id as string,
         full_name: String(team.full_name ?? ""),
         logo_url: (team.logo_url as string | null) ?? null,
+        abbreviation: (team.abbreviation as string | null) ?? null,
       };
     }
 

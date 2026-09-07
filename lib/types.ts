@@ -27,6 +27,11 @@ export interface Team {
   primary_color?: string | null;
   gender?: string | null;
   country?: string | null;
+  nationality?: string | null;
+  instagram_url?: string | null;
+  youtube_url?: string | null;
+  tiktok_url?: string | null;
+  twitter_url?: string | null;
 }
 
 export interface Year {
@@ -47,6 +52,7 @@ export interface CompetitionEdition {
   id: string;
   status: string | null;
   is_current: boolean | null;
+  show_in_home?: boolean | null;
   custom_name?: string | null;
   seasons: Season | Season[] | null;
 }
@@ -59,7 +65,53 @@ export interface Competition {
   primary_color: string | null;
   sport_slug: string | null;
   gender: string | null;
+  home_priority?: number | null;
   competition_editions?: CompetitionEdition[];
+}
+
+/** Edição elegível para exibição na home (ongoing + show_in_home). */
+export interface HomeEditionEntry {
+  id: string;
+  status: string | null;
+  show_in_home: boolean | null;
+  seasons: Season | Season[] | null;
+  competitions: {
+    id: string;
+    full_name: string;
+    short_name: string | null;
+    logo_url: string | null;
+    organization_id: string;
+    gender: string | null;
+    primary_color: string | null;
+    home_priority: number | null;
+  };
+}
+
+export interface BidEdition {
+  id: string;
+  competitionId: string;
+  competitionName: string;
+  competitionShortName: string | null;
+  competitionLogoUrl: string | null;
+  competitionColor: string | null;
+  seasonName: string | null;
+  customName: string | null;
+}
+
+export interface BidTeamSummary {
+  editionTeamId: string;
+  teamId: string;
+  team: Team;
+  athleteCount: number;
+  staffCount: number;
+}
+
+export interface BidTeamDetail {
+  edition: BidEdition;
+  team: Team;
+  editionTeamId: string;
+  squad: (Athlete & { id: string })[];
+  staff: TeamStaffMember[];
 }
 
 export interface Phase {
@@ -78,18 +130,28 @@ export interface Round {
   phase_id: string;
   name: string;
   custom_label: string | null;
-  display_order: number;
+  display_order: number | null;
+  is_current?: boolean | null;
+  /** Ida e volta (mais de um jogo por confronto). */
+  legs?: boolean | null;
+  /** Se false com legs: placar do card = vitórias (1 pt cada), não soma de gols. */
+  aggregate_score?: boolean | null;
 }
+
+/** Alias alinhado ao app. */
+export type MatchRound = Round;
 
 export interface Matchup {
   id: string;
   phase_id: string;
   conference_id?: string | null;
-  round_label: string;
-  display_order: number;
-  is_completed: boolean | null;
-  team_a_id: string | null;
-  team_b_id: string | null;
+  round_id?: string | null;
+  round_label: string | null;
+  display_order: number | null;
+  is_completed?: boolean | null;
+  team_a_id?: string | null;
+  team_b_id?: string | null;
+  aggregate_winner_id?: string | null;
   teams_a?: Team | null;
   teams_b?: Team | null;
 }
@@ -103,9 +165,12 @@ export interface Venue {
 export interface OrgVenue {
   id: string;
   full_name: string;
+  short_name?: string | null;
   address?: string | null;
   city?: string | null;
   state?: string | null;
+  logo_url?: string | null;
+  /** @deprecated use logo_url */
   image_url?: string | null;
   organization_id?: string;
   upcoming_matches?: number;
@@ -125,7 +190,9 @@ export interface MatchPhase {
   phase_type?: string;
   competition_editions?: {
     id: string;
-    seasons?: Season | null;
+    custom_name?: string | null;
+    ratings_are_public?: boolean | null;
+    seasons?: Season | Season[] | null;
     competitions?: {
       id: string;
       full_name: string;
@@ -149,6 +216,13 @@ export interface Match {
   status: string;
   score_a: number | null;
   score_b: number | null;
+  finish_type?: string | null;
+  penalty_score_a?: number | null;
+  penalty_score_b?: number | null;
+  aggregate_winner_id?: string | null;
+  photos_url?: string | null;
+  highlights_url?: string | null;
+  ratings_are_public?: boolean | null;
   motm_athlete_id?: string | null;
   motm_team_id?: string | null;
   motm_athlete?: Athlete | null;
@@ -158,7 +232,33 @@ export interface Match {
   athlete_team_id?: string | null;
   phases: MatchPhase | null;
   rounds?: Round | null;
+  matchups?: {
+    id: string;
+    round_label: string | null;
+    display_order?: number | null;
+  } | null;
   venues?: Venue | null;
+}
+
+export interface MatchRefereeRole {
+  id: string;
+  full_name: string;
+  abbreviation: string | null;
+  display_order: number | null;
+}
+
+export interface MatchReferee {
+  id: string;
+  match_id: string;
+  referee_id: string;
+  referee_role_id: string | null;
+  referees: {
+    id: string;
+    full_name: string;
+    surname: string | null;
+    photo_url: string | null;
+  } | null;
+  referee_roles: MatchRefereeRole | null;
 }
 
 export interface NewsArticle {
@@ -232,16 +332,18 @@ export interface HomeEditionData {
   editionId: string;
   competitionId: string;
   competitionName: string;
+  competitionLogoUrl: string | null;
+  competitionColor: string | null;
+  homePriority: number;
   editionName: string | null;
-  standings: StandingRow[];
+  currentPhaseStandings: StandingRow[];
+  tableMarkers: TableMarker[];
   currentPhaseType: Phase["phase_type"] | null;
   currentPhaseId: string | null;
   currentPhaseName: string | null;
   phaseMatches: Match[];
   phaseMatchups: Matchup[];
-  teams: Team[];
-  latestMotw: HomeMotw | null;
-  latestTotw: HomeTotw | null;
+  phaseRounds: MatchRound[];
 }
 
 export interface HomeHighlights {
@@ -279,7 +381,7 @@ export interface AthleteStatLeader {
   red_cards?: number | null;
   totw_count?: number | null;
   athletes: Athlete | null;
-  teams: Team | null;
+  teams: (Team & { id?: string }) | null;
 }
 
 export type TeamTitlesLeaderMode = "titles" | "wins";
@@ -303,7 +405,7 @@ export interface HomeSponsor {
   id: string;
   name: string;
   logo_url: string | null;
-  website_url?: string | null;
+  link_url?: string | null;
   display_order?: number | null;
 }
 
@@ -500,6 +602,7 @@ export interface MatchDetailData {
   staffLineups: MatchStaffLineup[];
   ratings: MatchAthleteRating[];
   actions: MatchAction[];
+  referees: MatchReferee[];
   teamAId: string;
   teamBId: string;
   /** Totais de faltas por período (`match_team_stats`). */
@@ -508,8 +611,12 @@ export interface MatchDetailData {
   teamStats: MatchTeamPeriodStat[];
   /** Confrontos finalizados entre as duas equipes (todas as competições). */
   h2hMatches: Match[];
+  /** Partidas da mesma rodada (`round_id`). */
+  roundMatches: Match[];
   nextGameA: Match | null;
   nextGameB: Match | null;
+  upcomingA: Match[];
+  upcomingB: Match[];
 }
 
 export type MatchPageData = MatchDetailData;
@@ -547,6 +654,15 @@ export interface EditionTotsSquad {
   staff: HomeTotwMember[];
 }
 
+/** Campeão de uma edição anterior (histórico do hub). */
+export interface PastChampionEntry {
+  team: Team;
+  editionId: string;
+  editionLabel: string;
+  /** Títulos acumulados desta equipe na competição. */
+  titleCount: number;
+}
+
 export interface CompetitionEditionDetails {
   totalGoals: number;
   totalAthletes: number;
@@ -555,7 +671,8 @@ export interface CompetitionEditionDetails {
   totalCards: number;
   debutTeams: Team[];
   phaseLeaders: EditionPhaseLeader[];
-  pastChampions: Team[];
+  /** Campeões por edição, mais recente primeiro. */
+  pastChampions: PastChampionEntry[];
   defendingChampion: Team | null;
 }
 
@@ -567,6 +684,7 @@ export interface CompetitionHubData {
   teamEditionStats: TeamEditionStats[];
   matches: Match[];
   matchups: Matchup[];
+  rounds: MatchRound[];
   editionTeams: EditionTeam[];
   editionDetails: CompetitionEditionDetails;
   awards: EditionAward[];
@@ -582,6 +700,8 @@ export interface CompetitionHubData {
   groups: Group[];
   groupTeams: GroupTeam[];
   tableMarkers: TableMarker[];
+  /** Notícias tagueadas com esta competição (vazio = ocultar aba). */
+  news: NewsArticleListItem[];
 }
 
 export interface AthleteListItem {
@@ -589,6 +709,16 @@ export interface AthleteListItem {
   full_name: string;
   surname: string | null;
   photo_url: string | null;
+  current_team: Team | null;
+  player_positions?: PlayerPosition | PlayerPosition[] | null;
+}
+
+export interface StaffListItem {
+  id: string;
+  full_name: string;
+  surname: string | null;
+  photo_url: string | null;
+  role: string | null;
   current_team: Team | null;
 }
 
@@ -724,6 +854,7 @@ export interface AthleteAwardEntry {
   winning_team_id?: string | null;
   athlete_id?: string | null;
   competition_editions: {
+    custom_name?: string | null;
     competitions: Pick<Competition, "id" | "full_name" | "short_name" | "logo_url"> | null;
     seasons: Season | null;
   } | null;
@@ -777,6 +908,7 @@ export interface TeamEditionStatRow {
     id: string;
     season_id?: string | null;
     competition_id?: string | null;
+    custom_name?: string | null;
     competitions: Pick<Competition, "id" | "full_name" | "short_name" | "logo_url"> | null;
     seasons: Season | null;
   } | null;
@@ -807,6 +939,7 @@ export interface TeamProfileData {
   foundedYear: number | null;
   staff: TeamStaffMember[];
   recentMatches: AthleteRecentMatch[];
+  news: NewsArticleListItem[];
 }
 
 // ─── Ranking ──────────────────────────────────────────────────────────────────
@@ -837,7 +970,12 @@ export interface NewsArticleDetail {
   published_at: string | null;
   body: object | null;
   tags_teams: { id: string; full_name: string; short_name: string | null; logo_url: string | null }[];
-  tags_competitions: { id: string; full_name: string; short_name: string | null }[];
+  tags_competitions: {
+    id: string;
+    full_name: string;
+    short_name: string | null;
+    logo_url?: string | null;
+  }[];
 }
 
 // ─── Hall da Fama ─────────────────────────────────────────────────────────────
@@ -860,6 +998,8 @@ export interface HallEntry {
   team_logo?: string | null;
   /** Cor da equipe atual (atleta) ou da própria equipe — fundo do card. */
   accent_color?: string | null;
+  /** Sigla cadastrada (rankings de equipes). */
+  abbreviation?: string | null;
   /** Valor formatado quando não é número simples (ex.: "85%"). */
   value_display?: string | null;
   /** Contexto estruturado (cache / métricas por jogo). */
@@ -872,6 +1012,8 @@ export interface HallCategory {
   section: "athletes" | "teams" | "staff";
   valueLabel: string;
   entries: HallEntry[];
+  /** Mensagem quando o ranking não tem resultados (ex.: Ranking de equipes). */
+  emptyHint?: string;
 }
 
 export interface HallFilterOptions {
@@ -882,8 +1024,22 @@ export interface HallFilterOptions {
     gender: string | null;
     logo_url?: string | null;
   }[];
-  editions: { id: string; competition_id: string; season_name: string; year: number | null }[];
+  editions: {
+    id: string;
+    competition_id: string;
+    season_name: string;
+    custom_name?: string | null;
+    year: number | null;
+  }[];
   years: { id: string; label: string }[];
+  teams: {
+    id: string;
+    full_name: string;
+    short_name: string | null;
+    abbreviation: string | null;
+    logo_url: string | null;
+    gender: string | null;
+  }[];
 }
 
 export interface HallSectionData {

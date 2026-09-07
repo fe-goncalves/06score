@@ -5,6 +5,7 @@ import type {
   Group,
   GroupTeam,
   Match,
+  MatchRound,
   Matchup,
   Phase,
   TeamEditionStats,
@@ -14,6 +15,7 @@ interface PhaseStandingsPanelProps {
   phases: Phase[];
   matches: Match[];
   matchups: Matchup[];
+  rounds?: MatchRound[];
   teamEditionStats: TeamEditionStats[];
   groups: Group[];
   groupTeams: GroupTeam[];
@@ -24,6 +26,7 @@ export function PhaseStandingsPanel({
   phases,
   matches,
   matchups,
+  rounds = [],
   teamEditionStats,
   groups,
   groupTeams,
@@ -48,9 +51,11 @@ export function PhaseStandingsPanel({
             phase={phase}
             matches={matches}
             matchups={matchups}
+            rounds={rounds}
             teamEditionStats={teamEditionStats}
             groups={groups}
             groupTeams={groupTeams}
+            tableMarkers={[]}
             accentColor={accentColor}
           />
         </section>

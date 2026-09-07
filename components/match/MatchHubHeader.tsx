@@ -3,16 +3,15 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { MatchGoalScorersRecap } from "@/components/match/MatchGoalScorersRecap";
-import { MatchHubHeaderBg } from "@/components/match/MatchHubHeaderBg";
 import { OrgImage } from "@/components/ui/OrgImage";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import type { TabItem } from "@/components/ui/PageTabs";
 import type { Match, MatchAction } from "@/lib/types";
 import {
   formatMatchHeaderDateTime,
+  formatMatchPhaseRoundLabel,
   isMatchFinished,
   isMatchLive,
-  matchStatusLabel,
 } from "@/lib/utils";
 
 interface MatchHubHeaderProps {
@@ -25,12 +24,25 @@ interface MatchHubHeaderProps {
   onTabChange: (id: string) => void;
 }
 
-function competitionLabel(match: Match): string {
-  return (
-    match.phases?.competition_editions?.competitions?.full_name ??
-    match.phases?.competition_editions?.competitions?.short_name ??
-    "Competição"
-  );
+function seasonName(
+  seasons: { name?: string | null } | { name?: string | null }[] | null | undefined,
+): string | null {
+  if (!seasons) return null;
+  if (Array.isArray(seasons)) return seasons[0]?.name?.trim() || null;
+  return seasons.name?.trim() || null;
+}
+
+function competitionShortLabel(match: Match): string {
+  const competition = match.phases?.competition_editions?.competitions;
+  const edition = match.phases?.competition_editions;
+  const short =
+    competition?.short_name?.trim() ||
+    competition?.full_name?.trim() ||
+    "Competição";
+  const editionName =
+    edition?.custom_name?.trim() || seasonName(edition?.seasons) || null;
+  if (!editionName) return short;
+  return `${short} · ${editionName}`;
 }
 
 function CalendarIcon() {
@@ -91,36 +103,17 @@ export function MatchHubHeader({
     teamA?.primary_color ??
     "var(--color-brand)";
   const showScore = finished || live;
+  const arenaName = venue?.full_name?.trim().toUpperCase() || null;
+  const phaseRoundRaw = formatMatchPhaseRoundLabel(match);
+  const phaseRound = phaseRoundRaw !== "—" ? phaseRoundRaw : null;
+  const competitionText = competitionShortLabel(match);
 
   return (
     <header
-      className={`match-hub-header ${live ? "match-hub-header--live" : ""}`}
+      className={`match-hub-header match-hub-header--bare ${live ? "match-hub-header--live" : ""}`}
       style={{ "--match-accent": accent } as CSSProperties}
     >
-      <MatchHubHeaderBg accentColor={accent} />
-
       <div className="match-hub-header-content">
-        <nav className="match-hub-breadcrumb" aria-label="Navegação">
-          <Link href="/competicoes" className="match-hub-breadcrumb-link">
-            Competições
-          </Link>
-          <span className="match-hub-breadcrumb-sep" aria-hidden>
-            ›
-          </span>
-          {competitionId ? (
-            <Link
-              href={`/competicoes/${competitionId}`}
-              className="match-hub-breadcrumb-link"
-            >
-              {competitionLabel(match)}
-            </Link>
-          ) : (
-            <span className="match-hub-breadcrumb-current">
-              {competitionLabel(match)}
-            </span>
-          )}
-        </nav>
-
         <div className="match-hub-meta">
           <span className="match-hub-meta-item">
             <CalendarIcon />
@@ -143,7 +136,7 @@ export function MatchHubHeader({
                   className="match-hub-meta-comp-logo"
                 />
               )}
-              <span>{competitionLabel(match)}</span>
+              <span>{competitionText}</span>
             </Link>
           ) : (
             <span className="match-hub-meta-item">
@@ -156,21 +149,21 @@ export function MatchHubHeader({
                   className="match-hub-meta-comp-logo"
                 />
               )}
-              <span>{competitionLabel(match)}</span>
+              <span>{competitionText}</span>
             </span>
           )}
-          {venue?.full_name && (
+          {arenaName && (
             <>
               <span className="match-hub-meta-sep" aria-hidden>
                 ·
               </span>
-              {venue.id ? (
+              {venue?.id ? (
                 <Link
                   href={`/arenas/${venue.id}`}
                   className="match-hub-meta-item match-hub-meta-link"
                 >
                   <PitchIcon />
-                  <span>{venue.full_name}</span>
+                  <span>{arenaName}</span>
                 </Link>
               ) : (
                 <Link
@@ -178,12 +171,16 @@ export function MatchHubHeader({
                   className="match-hub-meta-item match-hub-meta-link"
                 >
                   <PitchIcon />
-                  <span>{venue.full_name}</span>
+                  <span>{arenaName}</span>
                 </Link>
               )}
             </>
           )}
         </div>
+
+        {phaseRound ? (
+          <p className="match-hub-phase-round">{phaseRound}</p>
+        ) : null}
 
         <div className="match-hub-scoreboard">
           {teamA?.id ? (
@@ -194,14 +191,14 @@ export function MatchHubHeader({
               <span className="match-hub-team-name">
                 {teamA.short_name ?? teamA.full_name ?? "—"}
               </span>
-              <TeamLogo team={teamA} index={0} size={76} />
+              <TeamLogo team={teamA} index={0} size={112} />
             </Link>
           ) : (
             <div className="match-hub-team match-hub-team--home">
               <span className="match-hub-team-name">
                 {teamA?.short_name ?? teamA?.full_name ?? "—"}
               </span>
-              <TeamLogo team={teamA} index={0} size={76} />
+              <TeamLogo team={teamA} index={0} size={112} />
             </div>
           )}
 
@@ -217,7 +214,6 @@ export function MatchHubHeader({
                 {match.match_time?.slice(0, 5) ?? "—"}
               </p>
             )}
-            <p className="match-hub-status">{matchStatusLabel(match.status)}</p>
           </div>
 
           {teamB?.id ? (
@@ -225,14 +221,14 @@ export function MatchHubHeader({
               href={`/times/${teamB.id}`}
               className="match-hub-team match-hub-team--away match-hub-team-link"
             >
-              <TeamLogo team={teamB} index={1} size={76} />
+              <TeamLogo team={teamB} index={1} size={112} />
               <span className="match-hub-team-name">
                 {teamB.short_name ?? teamB.full_name ?? "—"}
               </span>
             </Link>
           ) : (
             <div className="match-hub-team match-hub-team--away">
-              <TeamLogo team={teamB} index={1} size={76} />
+              <TeamLogo team={teamB} index={1} size={112} />
               <span className="match-hub-team-name">
                 {teamB?.short_name ?? teamB?.full_name ?? "—"}
               </span>

@@ -2,6 +2,7 @@ import {
   getLineupRatingTone,
   lineupRatingClassName,
 } from "@/lib/match/lineupRatingTone";
+import { formatRating } from "@/lib/utils";
 
 interface MatchRatingBadgeProps {
   rating: number;
@@ -15,7 +16,7 @@ export function MatchRatingBadge({ rating }: MatchRatingBadgeProps) {
 
   return (
     <span className={`${lineupRatingClassName(tone)} tabular-nums`}>
-      {value.toFixed(1)}
+      {formatRating(value)}
     </span>
   );
 }

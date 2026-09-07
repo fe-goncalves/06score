@@ -1,5 +1,6 @@
 "use client";
 
+import { MatchIcon, type MatchIconName } from "@/components/match/icons/MatchIcon";
 import type { TeamAthleteStatSortKey, TeamCompetitionStatSortKey } from "@/lib/team/statsConfig";
 
 interface SortableStatThProps {
@@ -9,6 +10,8 @@ interface SortableStatThProps {
   direction: "asc" | "desc";
   onSort: (key: string) => void;
   className?: string;
+  icon?: MatchIconName;
+  label?: string;
 }
 
 export function SortableStatTh({
@@ -18,6 +21,8 @@ export function SortableStatTh({
   direction,
   onSort,
   className = "",
+  icon,
+  label,
 }: SortableStatThProps) {
   const isActive = activeSortKey === sortKey;
   return (
@@ -30,7 +35,19 @@ export function SortableStatTh({
           isActive ? (direction === "asc" ? "ascending" : "descending") : "none"
         }
       >
-        <span>{abbr}</span>
+        {icon ? (
+          <span className="athlete-stats-col-icon-wrap" title={label ?? abbr}>
+            <MatchIcon
+              name={icon}
+              size={14}
+              className="athlete-stats-col-icon"
+              tinted
+            />
+            <span className="sr-only">{label ?? abbr}</span>
+          </span>
+        ) : (
+          <span title={label}>{abbr}</span>
+        )}
         {isActive ? (
           <span className="athlete-stats-sort-dir" aria-hidden>
             {direction === "asc" ? "▲" : "▼"}

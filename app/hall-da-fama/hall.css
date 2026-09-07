@@ -1,7 +1,8 @@
-/* ── Hall da Fama — mobile first ─────────────────────────────────────────── */
+/* ── Hall da Fama — Phase 4 ──────────────────────────────────────────────── */
 
 .hall-page-wrap {
   --match-edge: 14px;
+  font-family: var(--font-mono);
 }
 
 @media (min-width: 768px) {
@@ -16,16 +17,18 @@
   min-width: 0;
 }
 
-.hall-hero {
+/* Header */
+
+.hall-header {
   position: relative;
   overflow: hidden;
   margin: 0 calc(-1 * var(--match-edge, 20px));
-  padding: 1.25rem var(--match-edge, 20px) 1rem;
+  padding: 1.35rem var(--match-edge, 20px) 1rem;
   background: #0a0a0a;
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.hall-hero-bg {
+.hall-header-bg {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -43,440 +46,326 @@
     linear-gradient(165deg, #111 0%, #0a0a0a 100%);
 }
 
-.hall-hero-content {
+.hall-header-content {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  margin-inline: auto;
 }
 
-.hall-hero-kicker {
-  margin: 0 0 0.35rem;
+.hall-header-title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(1.85rem, 8vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fff;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+/* Gender logo — click only, centered */
+
+.hall-gender-carousel {
+  position: relative;
+  width: min(100%, 16rem);
+  margin: 1.15rem auto 0;
+  display: grid;
+  grid-template-columns: 2.25rem 1fr 2.25rem;
+  grid-template-rows: auto auto;
+  align-items: center;
+  justify-items: center;
+  column-gap: 0.15rem;
+  row-gap: 0.55rem;
+}
+
+.hall-gender-stage {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  width: 100%;
+  max-width: 9rem;
+}
+
+.hall-gender-logo {
+  display: block;
+  width: clamp(4.75rem, 26vw, 6.75rem);
+  height: clamp(4.75rem, 26vw, 6.75rem);
+  background-image: var(
+    --gender-gradient,
+    linear-gradient(145deg, #f2e6c4, #d4af37)
+  );
+  -webkit-mask: url("/hall/cards.svg") center / contain no-repeat;
+  mask: url("/hall/cards.svg") center / contain no-repeat;
+}
+
+.hall-gender-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.hall-gender-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 1.45rem;
+  line-height: 1;
+  padding: 0.35rem 0.2rem;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.hall-gender-nav:hover:not(:disabled) {
+  color: #fff;
+}
+
+.hall-gender-nav:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.hall-gender-nav--prev {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.hall-gender-nav--next {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.hall-gender-dots {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.hall-gender-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.hall-gender-dot--active {
+  background-image: var(
+    --gender-gradient,
+    linear-gradient(145deg, #f2e6c4, #d4af37)
+  );
+  transform: scale(1.2);
+}
+
+/* Main tabs — centered */
+
+.hall-main-nav {
+  margin-top: 0.35rem;
+  width: calc(100% + 2 * var(--match-edge, 14px));
+  max-width: none;
+  margin-inline: calc(-1 * var(--match-edge, 14px));
+  padding-inline: var(--match-edge, 14px);
+  justify-content: center;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+.hall-main-nav .competition-hub-nav-tab {
+  flex: 0 0 auto;
+}
+
+/* Toolbar: category stepper + filters */
+
+.hall-ranking-section,
+.hall-titulos-section {
+  margin-top: 0.95rem;
+}
+
+.hall-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.65rem 0.85rem;
+  margin-bottom: 0.95rem;
+}
+
+.hall-toolbar-stepper {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  flex: 1 1 auto;
+  max-width: 100%;
+}
+
+.hall-filters-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.45rem;
+  padding: 0.48rem 0.9rem;
+  background: var(--card, #171717);
   font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-brand);
-}
-
-.hall-hero-title {
-  margin: 0;
-  font-family: var(--font-home-title);
-  font-size: clamp(1.65rem, 7vw, 2.35rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: #fff;
-  line-height: 1.05;
-}
-
-.hall-hero-sub {
-  margin: 0.45rem 0 0;
-  max-width: 28rem;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.48);
-}
-
-.hall-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.hall-gender-row {
-  display: flex;
-  gap: 0.45rem;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 0.15rem;
-}
-
-.hall-gender-btn {
-  flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
-  padding: 0.45rem 0.85rem;
-  background: rgba(0, 0, 0, 0.35);
-  font-family: var(--font-home-title);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.72);
   cursor: pointer;
   transition:
-    color 0.15s ease,
+    background 0.15s ease,
     border-color 0.15s ease,
-    background 0.15s ease;
+    color 0.15s ease;
 }
 
-.hall-gender-btn--active {
-  border-color: color-mix(in srgb, var(--color-brand) 55%, transparent);
-  background: color-mix(in srgb, var(--color-brand) 18%, transparent);
+.hall-filters-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
 
-.hall-entity-switch {
-  width: 100%;
-  display: flex;
+.hall-filters-btn--active {
+  border-color: color-mix(in srgb, var(--color-brand) 55%, transparent);
+  color: var(--color-brand);
+  background: color-mix(in srgb, var(--color-brand) 10%, transparent);
 }
 
-.hall-entity-switch .athlete-awards-switch-btn {
-  flex: 1 1 0;
-  min-width: 0;
-}
+/* Single card (mobile) / grid (desktop) */
 
-.hall-filters {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.hall-content {
-  margin-top: 1rem;
-  padding: 0.85rem 0.65rem 1rem;
-}
-
-.hall-grid {
+.hall-card-stage {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
+  place-items: center;
+  width: 100%;
 }
 
-@media (max-width: 359px) {
-  .hall-grid {
-    grid-template-columns: 1fr;
-    max-width: 14.5rem;
-    margin-inline: auto;
+.hall-card-stage .stats-highlight-card {
+  width: min(100%, 22rem);
+}
+
+.hall-cards-grid {
+  display: none;
+}
+
+.hall-loading-bar {
+  height: 2px;
+  background: var(--color-brand);
+  animation: hall-loading-slide 1s ease-in-out infinite;
+  border-radius: 1px;
+  margin-bottom: 12px;
+}
+
+@keyframes hall-loading-slide {
+  0% {
+    width: 0%;
+    opacity: 1;
+  }
+  50% {
+    width: 70%;
+    opacity: 1;
+  }
+  100% {
+    width: 100%;
+    opacity: 0;
   }
 }
+
+/* States */
 
 .hall-empty {
   margin: 0;
   padding: 2rem 0.5rem;
   text-align: center;
+  font-family: var(--font-mono);
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.42);
 }
 
-/* ── Card vertical (cores da equipe) ─────────────────────────────────────── */
-
-.hall-card {
-  position: relative;
+.hall-skeleton {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  min-height: 13.5rem;
-  aspect-ratio: 3 / 4.15;
-  max-height: 20rem;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--hall-accent-bright, var(--color-brand)) 35%, transparent);
-  border-radius: 0.85rem;
-  padding: 0;
-  text-align: left;
-  cursor: pointer;
-  color: #fff;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  isolation: isolate;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease;
+  gap: 0.45rem;
+  padding: 0.5rem 0;
+  width: min(100%, 22rem);
+  margin-inline: auto;
 }
 
-.hall-card-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.hall-card-bg-base {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    168deg,
-    var(--hall-accent-deep, #1a1f4a) 0%,
-    var(--hall-ink, #0a0a12) 38%,
-    #030304 100%
-  );
-}
-
-/* Textura grunge (referências) + cor do time */
-.hall-card-bg-texture {
-  position: absolute;
-  inset: -4%;
-  background-image: var(--hall-bg-url);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  opacity: var(--hall-bg-opacity, 0.9);
-  mix-blend-mode: var(--hall-bg-blend, overlay);
-  filter: hue-rotate(var(--hall-bg-hue, 0deg)) saturate(var(--hall-bg-saturate, 1.15))
-    contrast(1.08);
-  transform: scale(1.06);
-}
-
-.hall-card-bg-tint {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--hall-accent, #3b4fd8) 70%, transparent) 0%,
-    color-mix(in srgb, var(--hall-accent-deep, #111) 85%, transparent) 55%,
-    transparent 100%
-  );
-  opacity: var(--hall-tint-opacity, 0.55);
-  mix-blend-mode: color;
-}
-
-.hall-card-bg-grain {
-  position: absolute;
-  inset: 0;
-  opacity: 0.22;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
-  mix-blend-mode: overlay;
-  pointer-events: none;
-}
-
-.hall-card-bg-vignette {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    ellipse 95% 88% at 50% 38%,
-    transparent 35%,
-    rgba(0, 0, 0, 0.55) 100%
-  );
-  pointer-events: none;
-}
-
-.hall-card-bg-glow {
-  position: absolute;
-  inset: auto -30% -20% -30%;
-  height: 58%;
-  background: radial-gradient(
-    ellipse at 50% 100%,
-    color-mix(in srgb, var(--hall-accent-bright, var(--color-brand)) 48%, transparent),
-    transparent 70%
-  );
-  mix-blend-mode: screen;
-  opacity: 0.75;
-}
-
-/* Ajustes finos por textura */
-.hall-card--tag .hall-card-bg-texture {
-  transform: scale(1.12) rotate(-2deg);
-}
-
-.hall-card--neon .hall-card-bg-texture {
-  filter: hue-rotate(var(--hall-bg-hue, 0deg)) saturate(calc(var(--hall-bg-saturate, 1) * 1.05))
-    contrast(1.12) brightness(0.95);
-}
-
-.hall-card--wine .hall-card-bg-texture {
-  transform: scale(1.08);
-  mix-blend-mode: soft-light;
-}
-
-.hall-card--hard .hall-card-bg-texture {
-  transform: scale(1.1);
-  opacity: calc(var(--hall-bg-opacity, 0.9) * 0.95);
-}
-
-.hall-card--spray .hall-card-bg-texture {
-  transform: scale(1.14);
-  background-position: 42% 38%;
-}
-
-.hall-card--star .hall-card-bg-texture {
-  background-position: center 42%;
-}
-
-.hall-card--geo .hall-card-bg-texture {
-  background-position: 55% 45%;
-}
-
-.hall-card-head {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.35rem;
-  padding: 0.55rem 0.6rem 0;
-}
-
-.hall-card-label {
-  margin: 0;
-  max-width: 72%;
-  font-family: var(--font-home-title);
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  line-height: 1.2;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.78);
-}
-
-.hall-card-badge {
-  flex-shrink: 0;
-  padding: 0.2rem 0.45rem;
-  border-radius: 0.25rem;
-  background: color-mix(in srgb, var(--hall-accent-bright, #f5e642) 88%, #fff);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-  font-family: var(--font-home-title);
-  font-size: 0.62rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  color: var(--hall-ink, #0a0a12);
-  line-height: 1;
-}
-
-.hall-card-visual {
-  position: relative;
-  z-index: 1;
-  flex: 1 1 auto;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  min-height: 0;
-  padding: 0 0.35rem;
-  margin-top: -0.15rem;
-}
-
-.hall-card-watermark {
-  position: absolute;
-  top: 18%;
-  right: 8%;
-  width: 2.75rem !important;
-  height: 2.75rem !important;
-  opacity: 0.22;
-  object-fit: contain;
-  filter: saturate(1.1);
-}
-
-.hall-card-photo {
-  width: auto !important;
-  max-width: 100%;
-  height: auto !important;
-  max-height: 100%;
-  min-height: 5.5rem;
-  object-fit: contain;
-  object-position: bottom center;
-  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
-}
-
-.hall-card-photo--logo {
-  width: 4.25rem !important;
-  height: 4.25rem !important;
-  min-height: 0;
+.hall-skeleton-row {
+  height: 3.25rem;
   border-radius: 0.5rem;
-  object-fit: contain;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 0.35rem;
-}
-
-.hall-card-foot {
-  position: relative;
-  z-index: 2;
-  margin-top: auto;
-  padding: 0.55rem 0.65rem 0.6rem;
   background: linear-gradient(
-    180deg,
-    transparent 0%,
-    color-mix(in srgb, var(--hall-ink, #0a0a12) 82%, transparent) 22%,
-    color-mix(in srgb, var(--hall-ink, #0a0a12) 96%, transparent) 100%
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 100%
   );
-  backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background-size: 200% 100%;
+  animation: hall-skeleton-shimmer 1.2s ease infinite;
 }
 
-.hall-card-name {
-  margin: 0;
-  font-family: var(--font-home-title);
-  font-size: clamp(0.82rem, 3.6vw, 0.95rem);
-  font-weight: 800;
-  font-style: italic;
-  color: #fff;
-  line-height: 1.1;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.hall-card-sub {
-  margin: 0.2rem 0 0;
-  font-size: 0.58rem;
-  line-height: 1.25;
-  color: rgba(255, 255, 255, 0.55);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.hall-card-value {
+.hall-skeleton-label {
   margin: 0.35rem 0 0;
-  display: flex;
-  align-items: baseline;
-  gap: 0.3rem;
-  flex-wrap: wrap;
-}
-
-.hall-card-value-num {
-  font-family: var(--font-home-title);
-  font-size: clamp(1.35rem, 6vw, 1.65rem);
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  color: var(--hall-accent-bright, var(--color-brand));
-  line-height: 1;
-  text-shadow: 0 2px 12px color-mix(in srgb, var(--hall-accent, #000) 45%, transparent);
-}
-
-.hall-card-unit {
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.48);
-}
-
-.hall-card-cta {
-  display: inline-block;
-  margin-top: 0.4rem;
-  padding: 0.22rem 0.45rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  text-align: center;
   font-family: var(--font-mono);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.35);
 }
+
+@keyframes hall-skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* Ranking / filters modals */
 
 .hall-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 80;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(4px);
 }
 
 .hall-modal {
-  width: 100%;
-  max-height: min(88dvh, 100%);
-  overflow: auto;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: min(100%, 32rem);
+  max-height: min(88vh, 40rem);
+  display: flex;
+  flex-direction: column;
   border-radius: 0.85rem 0.85rem 0 0;
-  background: #101010;
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #111;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.hall-modal--filters {
+  max-height: min(70vh, 28rem);
 }
 
 .hall-modal-head {
@@ -486,80 +375,121 @@
   gap: 0.75rem;
   padding: 0.9rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  position: sticky;
-  top: 0;
-  background: #101010;
-  z-index: 1;
+  flex-shrink: 0;
 }
 
 .hall-modal-title {
   margin: 0;
-  font-family: var(--font-home-title);
-  font-size: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
   font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: #fff;
 }
 
 .hall-modal-close {
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 1.35rem;
   line-height: 1;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
+  padding: 0.15rem 0.35rem;
   cursor: pointer;
+}
+
+.hall-modal-close:hover {
+  color: #fff;
+}
+
+.hall-modal-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1rem;
+  overflow: auto;
 }
 
 .hall-modal-list {
   list-style: none;
   margin: 0;
-  padding: 0.35rem 0 0.5rem;
+  padding: 0;
+  overflow: auto;
+  flex: 1;
 }
 
 .hall-modal-row {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.75rem;
+  min-height: 3.5rem;
   padding: 0.65rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   text-decoration: none;
   color: inherit;
-  min-height: 2.85rem;
+  transition: background 0.15s ease;
 }
 
 .hall-modal-row:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(
+    in srgb,
+    var(--row-accent, var(--color-brand)) 10%,
+    rgba(255, 255, 255, 0.02)
+  );
 }
 
 .hall-modal-rank {
-  width: 1.35rem;
   flex-shrink: 0;
+  width: 1.5rem;
   text-align: center;
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: var(--hall-accent-bright, rgba(255, 255, 255, 0.45));
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .hall-modal-photo {
-  width: 2.5rem;
-  height: 2.5rem;
+  flex-shrink: 0;
+  width: 2.4rem !important;
+  height: 2.4rem !important;
   border-radius: 999px;
   object-fit: cover;
-  background: #1a1a1a;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hall-modal-photo--logo {
+  border-radius: 0.35rem;
+  object-fit: contain;
+  padding: 0.15rem;
+}
+
+.hall-modal-photo-ph {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .hall-modal-body {
-  flex: 1;
   min-width: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
 }
 
 .hall-modal-name {
+  font-family: var(--font-mono);
   font-size: 0.88rem;
-  font-weight: 700;
+  font-weight: 600;
   color: #fff;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -567,7 +497,8 @@
 }
 
 .hall-modal-meta {
-  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
   color: rgba(255, 255, 255, 0.42);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -576,105 +507,235 @@
 
 .hall-modal-value {
   flex-shrink: 0;
-  font-family: var(--font-home-title);
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: var(--hall-accent-bright, var(--color-brand));
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-brand);
+  text-align: right;
   white-space: nowrap;
 }
 
 .hall-modal-unit {
-  margin-left: 0.2rem;
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  display: block;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.38);
 }
 
-@media (min-width: 560px) {
-  .hall-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem;
+.hall-modal .stats-table-pager {
+  flex-shrink: 0;
+  padding: 0.65rem 1rem 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Títulos timeline */
+
+.hall-timeline {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0 0 0 1rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hall-timeline-item {
+  position: relative;
+  padding: 0 0 1rem 1rem;
+}
+
+.hall-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.hall-timeline-marker {
+  position: absolute;
+  left: -1.35rem;
+  top: 0.55rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  border: 2px solid var(--color-brand);
+  background: #0a0a0a;
+}
+
+.hall-timeline-card {
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%),
+    rgba(255, 255, 255, 0.02);
+  padding: 0.75rem 0.85rem;
+}
+
+.hall-timeline-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.45rem;
+}
+
+.hall-timeline-season {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.hall-timeline-award {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-brand);
+}
+
+.hall-timeline-comp {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.hall-timeline-comp-logo {
+  flex-shrink: 0;
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+  object-fit: contain;
+}
+
+.hall-timeline-comp-logo-ph {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hall-timeline-comp-name {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.hall-timeline-winner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-decoration: none;
+  color: inherit;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hall-timeline-winner-photo {
+  flex-shrink: 0;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.hall-timeline-winner-photo--logo {
+  border-radius: 0.35rem;
+  object-fit: contain;
+  padding: 0.15rem;
+  background: var(--card, #171717);
+}
+
+.hall-timeline-winner-ph {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.hall-timeline-winner-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.hall-timeline-winner-name {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.hall-timeline-winner-team {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+/* Desktop */
+
+@media (min-width: 768px) {
+  .hall-header {
+    margin: 0;
+    border-radius: 0.75rem;
+    margin-bottom: 0.25rem;
+    padding-bottom: 1.15rem;
   }
 
-  .hall-card {
-    min-height: 14.5rem;
+  .hall-main-nav {
+    width: 100%;
+    margin-inline: 0;
+    padding-inline: 0;
   }
 
-  .hall-filters {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
+  .hall-toolbar-stepper {
+    display: none;
+  }
+
+  .hall-toolbar {
+    justify-content: flex-end;
+  }
+
+  .hall-card-stage--mobile {
+    display: none;
+  }
+
+  .hall-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+    width: 100%;
+  }
+
+  .hall-cards-grid .stats-highlight-card {
+    width: 100%;
+    min-width: 0;
   }
 
   .hall-modal-backdrop {
     align-items: center;
-    padding: 1rem;
+    padding: 1.5rem;
   }
 
   .hall-modal {
-    width: min(100%, 28rem);
-    max-height: min(80vh, 36rem);
-    border-radius: 0.75rem;
-  }
-}
-
-@media (min-width: 768px) {
-  .hall-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.7rem;
-  }
-
-  .hall-card {
-    aspect-ratio: 3 / 4;
-    max-height: 18rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .hall-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.75rem;
-  }
-
-  .hall-hero {
-    margin: 0;
-    border-radius: 0.75rem;
-    margin-bottom: 0.25rem;
-  }
-
-  .hall-controls {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .hall-gender-row {
-    flex: 1 1 auto;
-  }
-
-  .hall-entity-switch {
-    width: auto;
-  }
-
-  .hall-filters {
-    flex: 1 1 100%;
-  }
-}
-
-@media (hover: hover) {
-  .hall-card:hover {
-    transform: translateY(-3px);
-    box-shadow:
-      0 12px 28px rgba(0, 0, 0, 0.45),
-      0 0 0 1px color-mix(in srgb, var(--hall-accent-bright, var(--color-brand)) 50%, transparent);
-  }
-}
-
-@media (hover: none) {
-  .hall-card:active {
-    transform: scale(0.985);
+    border-radius: 0.85rem;
   }
 }

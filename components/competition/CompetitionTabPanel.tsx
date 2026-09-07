@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PhaseMatchesGallery } from "@/components/competition/PhaseMatchesGallery";
 import { PhaseStandingsBlock } from "@/components/competition/PhaseStandingsBlock";
 import { PillStepper } from "@/components/ui/PillStepper";
 import {
@@ -13,6 +12,7 @@ import type {
   Group,
   GroupTeam,
   Match,
+  MatchRound,
   Matchup,
   Phase,
   TableMarker,
@@ -23,6 +23,7 @@ interface CompetitionTabPanelProps {
   phases: Phase[];
   matches: Match[];
   matchups: Matchup[];
+  rounds: MatchRound[];
   teamEditionStats: TeamEditionStats[];
   groups: Group[];
   groupTeams: GroupTeam[];
@@ -34,6 +35,7 @@ export function CompetitionTabPanel({
   phases,
   matches,
   matchups,
+  rounds,
   teamEditionStats,
   groups,
   groupTeams,
@@ -88,28 +90,18 @@ export function CompetitionTabPanel({
         />
       </div>
 
-      <div className="competition-tab-split">
-        <div className="competition-tab-standings">
-          <PhaseStandingsBlock
-            phase={activePhase}
-            matches={matches}
-            matchups={matchups}
-            teamEditionStats={teamEditionStats}
-            groups={groups}
-            groupTeams={groupTeams}
-            tableMarkers={tableMarkers}
-            accentColor={accentColor}
-          />
-        </div>
-
-        <div className="competition-tab-matches-col">
-          <PhaseMatchesGallery
-            matches={matches}
-            matchups={matchups}
-            phaseId={activePhase.id}
-            accentColor={accentColor}
-          />
-        </div>
+      <div className="competition-tab-standings competition-tab-standings--solo">
+        <PhaseStandingsBlock
+          phase={activePhase}
+          matches={matches}
+          matchups={matchups}
+          rounds={rounds}
+          teamEditionStats={teamEditionStats}
+          groups={groups}
+          groupTeams={groupTeams}
+          tableMarkers={tableMarkers}
+          accentColor={accentColor}
+        />
       </div>
     </div>
   );

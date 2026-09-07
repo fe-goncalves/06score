@@ -14,9 +14,12 @@ const H2H_MATCH_SELECT = `
   teams_b:teams!matches_team_b_id_fkey(id, full_name, short_name, abbreviation, logo_url),
   phases(
     edition_id,
-    competition_editions(
+    competition_editions!phases_edition_id_fkey(
+      id,
       competition_id,
-      competitions(full_name, short_name, logo_url)
+      custom_name,
+      seasons(name),
+      competitions!competition_editions_competition_id_fkey(id, full_name, short_name, logo_url)
     )
   )
 `;
@@ -31,8 +34,8 @@ const NEXT_MATCH_SELECT = `
   teams_a:teams!matches_team_a_id_fkey(id, full_name, short_name, abbreviation, logo_url),
   teams_b:teams!matches_team_b_id_fkey(id, full_name, short_name, abbreviation, logo_url),
   phases(
-    competition_editions(
-      competitions(full_name, short_name, logo_url)
+    competition_editions!phases_edition_id_fkey(
+      competitions!competition_editions_competition_id_fkey(full_name, short_name, logo_url)
     )
   )
 `;
@@ -78,36 +81,33 @@ export async function fetchH2HMatches(
 export async function fetchNextTeamMatch(
   teamId: string,
 ): Promise<Match | null> {
-  if (!teamId) return null;
+  const list = await fetchUpcomingTeamMatches(teamId, 1);
+  return list[0] ?? null;
+}
 
-  const todayUtc = new Date().toISOString().split("T")[0];
+/** Próximos jogos da equipe (scheduled/live a partir de hoje). */
+export async function fetchUpcomingTeamMatches(
+  teamId: string,
+  limit = 8,
+): Promise<Match[]> {
+  if (!teamId) return [];
+
   const today = todayDateYmd();
-
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("matches")
     .select(NEXT_MATCH_SELECT)
     .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
-    .eq("status", "scheduled")
+    .in("status", ["scheduled", "live"])
     .gte("match_date", today)
     .order("match_date", { ascending: true })
     .order("match_time", { ascending: true })
-    .limit(1);
+    .limit(limit);
 
   if (error) {
-    console.error("[fetchNextTeamMatch]", error.message);
+    console.error("[fetchUpcomingTeamMatches]", error.message);
+    return [];
   }
 
-  const rows = (data as Match[] | null) ?? [];
-  const nextGame = rows[0] ?? null;
-
-  console.log("=== NEXT GAME DEBUG ===", {
-    teamId,
-    today,
-    todayUtc,
-    nextGame,
-    error: error?.message ?? null,
-  });
-
-  return nextGame;
+  return (data as Match[] | null) ?? [];
 }

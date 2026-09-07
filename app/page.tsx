@@ -1,13 +1,17 @@
 import { HomeClient } from "@/components/home/HomeClient";
 import {
-  getActiveCompetitions,
   getFeaturedNews,
+  getHomeEditions,
   getHomeEditionsBundle,
-  getOrgSponsors,
-  getRecentAndUpcomingMatches,
+  getHomeStripMatches,
+  getOrgTeams,
+  homeEditionsToCompetitions,
 } from "@/lib/data/home";
-import { getHomeHighlightsBundle } from "@/lib/data/home-highlights";
+import { getPublicSiteHomeConfig } from "@/lib/data/siteHome";
 import { getOrgSlug, getOrganization } from "@/lib/org";
+
+/** Janela da faixa de jogos no topo da home (± dias a partir de hoje). */
+const HOME_STRIP_DAYS = 7;
 
 export default async function HomePage() {
   const slug = await getOrgSlug();
@@ -17,27 +21,26 @@ export default async function HomePage() {
     return null;
   }
 
-  const [competitions, matches, news, sponsors] = await Promise.all([
-    getActiveCompetitions(org.id),
-    getRecentAndUpcomingMatches(org.id),
-    getFeaturedNews(org.id),
-    getOrgSponsors(org.id),
-  ]);
+  const homeConfig = await getPublicSiteHomeConfig(slug);
+  const homeEditionEntries = await getHomeEditions(org.id);
+  const competitions = homeEditionsToCompetitions(homeEditionEntries);
 
-  const [editionsByCompetition, highlights] = await Promise.all([
-    getHomeEditionsBundle(competitions),
-    getHomeHighlightsBundle(org.id, competitions),
+  const [stripMatches, news, teams, homeEditions] = await Promise.all([
+    getHomeStripMatches(org.id, HOME_STRIP_DAYS, HOME_STRIP_DAYS),
+    getFeaturedNews(org.id),
+    getOrgTeams(org.id),
+    getHomeEditionsBundle(homeEditionEntries),
   ]);
 
   return (
     <HomeClient
-      org={org}
       competitions={competitions}
-      matches={matches}
+      homeEditions={homeEditions}
+      teams={teams}
+      stripMatches={stripMatches}
       news={news}
-      sponsors={sponsors}
-      editionsByCompetition={editionsByCompetition}
-      highlights={highlights}
+      sponsors={homeConfig.sponsors}
+      sponsorsVisible={homeConfig.home_sponsors_visible}
     />
   );
 }

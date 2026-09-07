@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchRanking } from "@/app/ranking/actions";
+import { SiteListHero } from "@/components/layout/SiteListHero";
 import { RankingTable } from "@/components/ranking/RankingTable";
+import { matchesQuery } from "@/lib/search/normalizeQuery";
 import type { RankingRow } from "@/lib/types";
 
 interface RankingClientProps {
@@ -13,6 +15,7 @@ type Gender = "male" | "female";
 
 export function RankingClient({ orgId }: RankingClientProps) {
   const [gender, setGender] = useState<Gender>("male");
+  const [searchTerm, setSearchTerm] = useState("");
   const [rows, setRows] = useState<RankingRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,26 +26,35 @@ export function RankingClient({ orgId }: RankingClientProps) {
       .finally(() => setLoading(false));
   }, [orgId, gender]);
 
-  return (
-    <div>
-      <div className="mb-8 flex gap-2">
-        {(["male", "female"] as Gender[]).map((g) => (
-          <button
-            key={g}
-            type="button"
-            onClick={() => setGender(g)}
-            className={`rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-              gender === g
-                ? "bg-[var(--color-brand)] text-black"
-                : "border border-white/20 text-white/60 hover:border-white/40 hover:text-white/90"
-            }`}
-          >
-            {g === "male" ? "Masculino" : "Feminino"}
-          </button>
-        ))}
-      </div>
+  const filteredRows = useMemo(() => {
+    if (!searchTerm.trim()) return rows;
+    return rows.filter((row) => matchesQuery(row.team_name, searchTerm));
+  }, [rows, searchTerm]);
 
-      <RankingTable rows={rows} loading={loading} />
-    </div>
+  return (
+    <>
+      <SiteListHero
+        title="RANKING"
+        searchId="ranking-search"
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+      />
+      <div className="page-container pb-14 pt-2">
+        <div className="ranking-gender-toggle" role="group" aria-label="Gênero">
+          {(["male", "female"] as Gender[]).map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGender(g)}
+              className={`ranking-gender-btn${gender === g ? " ranking-gender-btn--active" : ""}`}
+            >
+              {g === "male" ? "Masculino" : "Feminino"}
+            </button>
+          ))}
+        </div>
+
+        <RankingTable rows={filteredRows} loading={loading} />
+      </div>
+    </>
   );
 }

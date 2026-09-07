@@ -1,18 +1,12 @@
 "use client";
 
-import { MatchRatingBadge } from "@/components/match/MatchRatingBadge";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import {
   computeMatchStatRows,
   hasVisibleMatchStats,
   type MatchStatRow,
 } from "@/lib/match/matchStats";
-import { getTeamMatchAvgRating } from "@/lib/match/periodFouls";
 import type { MatchTeamPeriodStat } from "@/lib/match/periodFouls";
-import {
-  statBarSegmentsFilled,
-  useMatchStatBarSegmentCount,
-} from "@/lib/hooks/useMatchStatBarSegmentCount";
 import type { CSSProperties } from "react";
 import type { Match, MatchAction } from "@/lib/types";
 
@@ -23,94 +17,68 @@ interface MatchStatisticsPanelProps {
   teamStats: MatchTeamPeriodStat[];
 }
 
-function StatBarHalf({
-  filled,
-  side,
-  segmentCount,
+/**
+ * Barra dinâmica (app): total de segmentos = home + away.
+ * Primeiros `home` na cor A; restantes na cor B.
+ */
+function DynamicStatBar({
+  home,
+  away,
+  colorA,
+  colorB,
 }: {
-  filled: number;
-  side: "home" | "away";
-  segmentCount: number;
+  home: number;
+  away: number;
+  colorA: string;
+  colorB: string;
 }) {
-  const on = statBarSegmentsFilled(filled, segmentCount);
+  const total = home + away;
 
-  return (
-    <div
-      className={`match-stat-bar-half match-stat-bar-half--${side}`}
-      style={{
-        gridTemplateColumns: `repeat(${segmentCount}, minmax(0, 1fr))`,
-      }}
-    >
-      {Array.from({ length: segmentCount }, (_, index) => {
-        const active =
-          side === "home"
-            ? index >= segmentCount - on
-            : index < on;
-        return (
-          <div
-            key={index}
-            className={
-              active
-                ? "match-stat-bar-segment match-stat-bar-segment--on"
-                : "match-stat-bar-segment"
-            }
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function StatBar({ home, away }: { home: number; away: number }) {
-  const segmentCount = useMatchStatBarSegmentCount();
-
-  return (
-    <div className="match-stat-bar" aria-hidden>
-      <StatBarHalf filled={home} side="home" segmentCount={segmentCount} />
-      <div className="match-stat-bar-axis" />
-      <StatBarHalf filled={away} side="away" segmentCount={segmentCount} />
-    </div>
-  );
-}
-
-function convertedSubLabel(count: number | undefined): string | null {
-  if (count == null || count <= 0) return null;
-  return count === 1 ? "1 convertido" : `${count} convertidos`;
-}
-
-function StatValue({
-  value,
-  converted,
-  align,
-}: {
-  value: number;
-  converted?: number;
-  align: "home" | "away";
-}) {
-  const sub = convertedSubLabel(converted);
-  return (
-    <div
-      className={`match-stat-value-wrap match-stat-value-wrap--${align}`}
-    >
-      <span
-        className={`match-stat-value match-stat-value--${align} tabular-nums`}
-      >
-        {value}
-      </span>
-      {sub && <span className="match-stat-sub">{sub}</span>}
-    </div>
-  );
-}
-
-function StatRowItem({ row }: { row: MatchStatRow }) {
-  return (
-    <li className="match-stat-row">
-      <div className="match-stat-values">
-        <StatValue value={row.home} converted={row.homeConverted} align="home" />
-        <span className="match-stat-label">{row.label}</span>
-        <StatValue value={row.away} converted={row.awayConverted} align="away" />
+  if (total <= 0) {
+    return (
+      <div className="match-stat-dyn-bar" aria-hidden>
+        <span className="match-stat-dyn-empty" />
       </div>
-      <StatBar home={row.home} away={row.away} />
+    );
+  }
+
+  return (
+    <div className="match-stat-dyn-bar" aria-hidden>
+      {Array.from({ length: total }, (_, index) => (
+        <span
+          key={index}
+          className="match-stat-dyn-seg"
+          style={{
+            backgroundColor: index < home ? colorA : colorB,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function StatRowItem({
+  row,
+  colorA,
+  colorB,
+}: {
+  row: MatchStatRow;
+  colorA: string;
+  colorB: string;
+}) {
+  return (
+    <li className="match-stat-dyn-row">
+      <div className="match-stat-dyn-values">
+        <span className="match-stat-dyn-value tabular-nums">{row.home}</span>
+        <span className="match-stat-dyn-label">{row.label.toUpperCase()}</span>
+        <span className="match-stat-dyn-value tabular-nums">{row.away}</span>
+      </div>
+      <DynamicStatBar
+        home={row.home}
+        away={row.away}
+        colorA={colorA}
+        colorB={colorB}
+      />
     </li>
   );
 }
@@ -123,45 +91,40 @@ export function MatchStatisticsPanel({
 }: MatchStatisticsPanelProps) {
   const teamBId = match.team_b_id ?? "";
   const rows = computeMatchStatRows(actions, teamAId, teamBId, teamStats);
-  const competitionColor =
+  const colorA = match.teams_a?.primary_color?.trim() || "#3A5A7A";
+  const colorB = match.teams_b?.primary_color?.trim() || "#5A3A4A";
+  const accent =
     match.phases?.competition_editions?.competitions?.primary_color ??
-    "var(--color-brand, #bff205)";
-  const statsStyle = {
-    "--match-stat-accent": competitionColor,
-  } as CSSProperties;
+    "var(--color-brand)";
 
-  const avgHome = getTeamMatchAvgRating(teamStats, teamAId);
-  const avgAway = getTeamMatchAvgRating(teamStats, teamBId);
-
-  if (!hasVisibleMatchStats(rows) && !avgHome && !avgAway) {
+  if (!hasVisibleMatchStats(rows)) {
     return (
       <p className="match-empty-state">
-        Nenhuma estatística registrada para esta partida.
+        Estatísticas ainda não disponíveis.
       </p>
     );
   }
 
   return (
-    <div className="match-stats" style={statsStyle}>
-      <div className="match-stats-teams">
-        <div className="match-stats-team-side match-stats-team-side--home">
-          <TeamLogo team={match.teams_a} index={0} size={32} />
-          {avgHome && <MatchRatingBadge rating={avgHome.avgRating} />}
-        </div>
-        <span className="match-stats-vs">vs</span>
-        <div className="match-stats-team-side match-stats-team-side--away">
-          {avgAway && <MatchRatingBadge rating={avgAway.avgRating} />}
-          <TeamLogo team={match.teams_b} index={1} size={32} />
-        </div>
+    <div
+      className="match-stats-dyn"
+      style={{ "--match-stat-accent": accent } as CSSProperties}
+    >
+      <div className="match-stats-dyn-logos">
+        <TeamLogo team={match.teams_a} index={0} size={48} />
+        <TeamLogo team={match.teams_b} index={1} size={48} />
       </div>
 
-      {hasVisibleMatchStats(rows) && (
-        <ul className="match-stats-list">
-          {rows.map((row) => (
-            <StatRowItem key={row.id} row={row} />
-          ))}
-        </ul>
-      )}
+      <ul className="match-stats-dyn-list">
+        {rows.map((row) => (
+          <StatRowItem
+            key={row.id}
+            row={row}
+            colorA={colorA}
+            colorB={colorB}
+          />
+        ))}
+      </ul>
     </div>
   );
 }

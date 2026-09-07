@@ -1,37 +1,35 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { LineupsPanel } from "@/components/match/LineupsPanel";
-import { MatchCompetitionPreview } from "@/components/match/MatchCompetitionPreview";
 import { MatchMotmCard } from "@/components/match/MatchMotmCard";
-import { MatchH2HPanel } from "@/components/match/MatchH2HPanel";
 import { MatchHubHeader } from "@/components/match/MatchHubHeader";
+import { MatchMediaPanel } from "@/components/match/MatchMediaPanel";
+import { MatchRoundPanel } from "@/components/match/MatchRoundPanel";
 import { MatchStatisticsPanel } from "@/components/match/MatchStatisticsPanel";
-import { MatchTabPlaceholder } from "@/components/match/MatchTabPlaceholder";
 import { TimelinePanel } from "@/components/match/TimelinePanel";
 import {
+  buildMatchTabs,
   DEFAULT_MATCH_TAB,
-  MATCH_TABS,
   resolveMatchTab,
 } from "@/lib/match/matchTabs";
 import { useClientTab } from "@/lib/navigation/useClientTab";
-import type { CompetitionHubData, MatchPageData } from "@/lib/types";
+import type { MatchPageData } from "@/lib/types";
 
 interface MatchPageClientProps {
   data: MatchPageData;
-  competitionHub: CompetitionHubData | null;
 }
 
 function MatchContent({
   data,
   tab,
-  competitionHub,
+  availableTabIds,
 }: {
   data: MatchPageData;
   tab: string;
-  competitionHub: CompetitionHubData | null;
+  availableTabIds: string[];
 }) {
-  const active = resolveMatchTab(tab);
+  const active = resolveMatchTab(tab, availableTabIds);
   const {
     match,
     lineups,
@@ -39,17 +37,22 @@ function MatchContent({
     actions,
     teamAId,
     teamBId,
-    h2hMatches,
-    nextGameA,
-    nextGameB,
     periodFoulCounts,
     staffLineups,
     teamStats,
+    roundMatches,
   } = data;
 
+  const roundLabel =
+    match.rounds?.custom_label?.trim() ||
+    match.rounds?.name?.trim() ||
+    null;
+
   return (
-    <div className="match-page-panel">
-      <div className={active === "detalhes" ? undefined : "hidden"}>
+    <div className="match-page-panel" key={active}>
+      <div
+        className={`match-tab-pane ${active === "timeline" ? "match-tab-pane--active" : "hidden"}`}
+      >
         <div className="match-details-stack">
           <MatchMotmCard
             match={match}
@@ -73,7 +76,9 @@ function MatchContent({
         </div>
       </div>
 
-      <div className={active === "formacoes" ? undefined : "hidden"}>
+      <div
+        className={`match-tab-pane ${active === "formacoes" ? "match-tab-pane--active" : "hidden"}`}
+      >
         <LineupsPanel
           match={match}
           lineups={lineups}
@@ -84,7 +89,9 @@ function MatchContent({
         />
       </div>
 
-      <div className={active === "estatisticas" ? undefined : "hidden"}>
+      <div
+        className={`match-tab-pane ${active === "estatisticas" ? "match-tab-pane--active" : "hidden"}`}
+      >
         <MatchStatisticsPanel
           match={match}
           actions={actions}
@@ -93,34 +100,45 @@ function MatchContent({
         />
       </div>
 
-      <div className={active === "partidas" ? undefined : "hidden"}>
-        <MatchH2HPanel
-          match={match}
-          h2hMatches={h2hMatches}
-          nextGameA={nextGameA}
-          nextGameB={nextGameB}
-          teamAId={teamAId}
-          teamBId={teamBId}
+      <div
+        className={`match-tab-pane ${active === "rodada" ? "match-tab-pane--active" : "hidden"}`}
+      >
+        <MatchRoundPanel
+          matches={roundMatches}
+          currentMatchId={match.id}
+          roundLabel={roundLabel}
         />
       </div>
 
-      <div className={active === "competicao" ? undefined : "hidden"}>
-        <MatchCompetitionPreview match={match} hub={competitionHub} />
-      </div>
-
-      <div className={active === "midia" ? undefined : "hidden"}>
-        <MatchTabPlaceholder label="Mídia" />
+      <div
+        className={`match-tab-pane ${active === "midia" ? "match-tab-pane--active" : "hidden"}`}
+      >
+        <MatchMediaPanel
+          match={match}
+          accentColor={
+            match.phases?.competition_editions?.competitions?.primary_color ??
+            null
+          }
+        />
       </div>
     </div>
   );
 }
 
-export function MatchPageClient({
-  data,
-  competitionHub,
-}: MatchPageClientProps) {
+export function MatchPageClient({ data }: MatchPageClientProps) {
+  const hasMedia = Boolean(
+    data.match.photos_url?.trim() || data.match.highlights_url?.trim(),
+  );
+  const hasRound = Boolean(
+    data.match.round_id && data.roundMatches.length > 0,
+  );
+  const tabs = useMemo(
+    () => buildMatchTabs({ hasRound, hasMedia }),
+    [hasRound, hasMedia],
+  );
+  const availableTabIds = useMemo(() => tabs.map((t) => t.id), [tabs]);
   const { tab, setTab } = useClientTab(DEFAULT_MATCH_TAB, "tab");
-  const activeTab = resolveMatchTab(tab);
+  const activeTab = resolveMatchTab(tab, availableTabIds);
 
   return (
     <div className="match-page">
@@ -134,14 +152,14 @@ export function MatchPageClient({
           actions={data.actions}
           teamAId={data.teamAId}
           teamBId={data.teamBId}
-          tabs={MATCH_TABS}
+          tabs={tabs}
           activeTab={activeTab}
           onTabChange={setTab}
         />
         <MatchContent
           data={data}
           tab={activeTab}
-          competitionHub={competitionHub}
+          availableTabIds={availableTabIds}
         />
       </Suspense>
     </div>

@@ -20,7 +20,15 @@ function resultForTeam(m: Match, teamId: string): FormLetter | null {
 
   const sa = m.score_a ?? 0;
   const sb = m.score_b ?? 0;
-  if (sa === sb) return "E";
+  if (sa === sb) {
+    if (m.penalty_score_a != null && m.penalty_score_b != null) {
+      const won =
+        (teamId === aId && m.penalty_score_a > m.penalty_score_b) ||
+        (teamId === bId && m.penalty_score_b > m.penalty_score_a);
+      return won ? "V" : "D";
+    }
+    return "E";
+  }
 
   const won =
     (teamId === aId && sa > sb) || (teamId === bId && sb > sa);

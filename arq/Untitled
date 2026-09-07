@@ -1,0 +1,40 @@
+Certo, vamos ter que aplicar várias correções.
+
+Header: 
+1. Placar: 
+- o ":" não está ficando na mesma altura dos placares. Em termos de altura, ele deve estar centralizado entre os dois placares.
+- Quando houver disputa de desempate, o placar de cada equipe na disputa deve ficar em menor tamanho, abaixo do placar de tempo normal.
+- Mesmo com perdedor declarado, nesta tela de jogo, pode manter os dois placares em branco opacidade maxima.
+- Pode aumentar ainda mais o tamanho da fonte. Igualar a logo.
+
+2. Logos e nomes das equipes:
+- A logo das equipes pode ser ligeiramente maior.
+- As logos das equipes ficaram distantes do placar, aproxime mais. 
+- O nome das equipes abaixo pode ser em Inter Bold.
+
+3. Resumo (autores de gol):
+- Aumente o espaçamento entre o nome das equipes e o resumo, estão muito proximos.
+- Não precisa de virgula entre o minuto e o autor.
+- Quando o mesmo autor fizer mais de um gol, não precisa exibir uma linha para gol. Agrupe os minutos. Por exemplo: Autor do gol 6', 16', 43'
+
+4. Cabeçalho:
+- Onde há data e competição, deixe em duas linhas assim:
+DD/MM/AA   |   HH:MM
+Logo | Nome curto da competição
+
+
+
+Aba Detalhes:
+1. A partir de agora as ações serão exibidas em dois tipos de coluna: Ações da equipe A (alinhadas a esquerda), e ações da equipe B (alinhadas a direita). O minuto será exibido junto com a ação, sendo neste alinhamento:
+AÇÃO EQUIPE A:  Minuto (Em Space Mono Bold) | Placar (se for gol) | Icon | Apelido do marcador (Em Inter Bold - maior do que está) | Assistente (se for gol) (Em Inter Regular Bold com menor opacidade - assisntencia nao tem mais icon aqui.
+AÇÃO EQUIPE B: Assistente (se for gol) (Em Inter Regular Bold com menor opacidade - assisntencia nao tem mais icon aqui. | Apelido do marcador (Em Inter Bold - maior do que está) | Icon | Placar (se for gol) | Minuto (Em Space Mono Bold)
+2. As ações ficaram grudadas com o canto da tela, precisa ter um espaçamento entre o fim da tela e a ação.
+3. Coloque um fundo chapado (cinza quase preto) em toda a parte das ações. Um card de borda arredondada. Não é um para cada ação, é um pra tudo.
+4. Nunca exibir dois icons para uma ação. Quando gol é de penalti ou de shoot-out não exibir 2 icons, apenas o icon de 
+5. Padronize (e aumente) o tamanho dos icons. Alguns ficaram maiores que outros.
+6. Quando for gol contra, exibir o icon em vermelho.
+7. Aumente, um pouco, o espaçemento entre o primeiro e segundo tempo.
+8. Aumente um pouco o "1T" e "2T" e etc. Aumente tambem a espessura da linha que divide um tempo e outro.
+9. Quando houver disputa de penalti/shoot-out: ao lado do placar (por sinal está ficando com X dividindo, quando deveria ser :), que fica abaixo da linha divisória, exibir um contador com icones dos shoot-outs. Por exemplo: 
+✅✅❌❌❌
+Um para cada lado. Do centro para a esquerda para equipe A. Do centro para a direita para a equipe B. Os icons usados devem ser: 

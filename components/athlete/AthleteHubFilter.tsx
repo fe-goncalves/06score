@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { OrgLogo } from "@/components/ui/OrgLogo";
 import { useFilterMenuPosition } from "@/lib/hooks/useFilterMenuPosition";
 
@@ -20,6 +20,17 @@ interface AthleteHubFilterProps {
   disabled?: boolean;
   /** Exibe logo no gatilho e nas opções (Clube, Competição). */
   showLogo?: boolean;
+  /** Campo de busca interno no dropdown. */
+  searchable?: boolean;
+  searchPlaceholder?: string;
+}
+
+function normalizeSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 export function AthleteHubFilter({
@@ -30,10 +41,15 @@ export function AthleteHubFilter({
   allLabel = "Todos",
   disabled = false,
   showLogo = true,
+  searchable = false,
+  searchPlaceholder = "Buscar…",
 }: AthleteHubFilterProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const listId = useId();
+  const searchId = useId();
   const menuStyle = useFilterMenuPosition(open, rootRef);
 
   const selected =
@@ -45,8 +61,20 @@ export function AthleteHubFilter({
           logoUrl: null,
         };
 
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options;
+    const query = normalizeSearch(search);
+    return options.filter((opt) => normalizeSearch(opt.label).includes(query));
+  }, [options, search, searchable]);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSearch("");
+      return;
+    }
+    if (searchable) {
+      searchRef.current?.focus();
+    }
     const onPointerDown = (e: MouseEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     };
@@ -59,7 +87,7 @@ export function AthleteHubFilter({
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, searchable]);
 
   const pick = (id: string) => {
     onChange(id);
@@ -103,43 +131,60 @@ export function AthleteHubFilter({
         </button>
 
         {open && (
-          <ul
-            id={listId}
+          <div
             className="athlete-comp-filter-menu athlete-comp-filter-menu--floating"
             style={menuStyle}
-            role="listbox"
           >
-            <li role="option" aria-selected={value === "all"}>
-              <button
-                type="button"
-                className={`athlete-comp-filter-option ${value === "all" ? "athlete-comp-filter-option--active" : ""}`}
-                onClick={() => pick("all")}
-              >
-                <span className="athlete-comp-filter-option-label">{allLabel}</span>
-              </button>
-            </li>
-            {options.map((opt) => (
-              <li key={opt.id} role="option" aria-selected={value === opt.id}>
+            {searchable ? (
+              <div className="athlete-comp-filter-search-wrap">
+                <label htmlFor={searchId} className="sr-only">
+                  {searchPlaceholder}
+                </label>
+                <input
+                  ref={searchRef}
+                  id={searchId}
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  className="athlete-comp-filter-search"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            ) : null}
+            <ul id={listId} role="listbox">
+              <li role="option" aria-selected={value === "all"}>
                 <button
                   type="button"
-                  className={`athlete-comp-filter-option ${value === opt.id ? "athlete-comp-filter-option--active" : ""}`}
-                  onClick={() => pick(opt.id)}
+                  className={`athlete-comp-filter-option ${value === "all" ? "athlete-comp-filter-option--active" : ""}`}
+                  onClick={() => pick("all")}
                 >
-                  {showLogo &&
-                    (opt.logoUrl ? (
-                      <OrgLogo
-                        src={opt.logoUrl}
-                        size={20}
-                        className="athlete-comp-filter-logo"
-                      />
-                    ) : (
-                      <span className="athlete-comp-filter-logo athlete-comp-filter-logo--ph" />
-                    ))}
-                  <span className="athlete-comp-filter-option-label">{opt.label}</span>
+                  <span className="athlete-comp-filter-option-label">{allLabel}</span>
                 </button>
               </li>
-            ))}
-          </ul>
+              {filteredOptions.map((opt) => (
+                <li key={opt.id} role="option" aria-selected={value === opt.id}>
+                  <button
+                    type="button"
+                    className={`athlete-comp-filter-option ${value === opt.id ? "athlete-comp-filter-option--active" : ""}`}
+                    onClick={() => pick(opt.id)}
+                  >
+                    {showLogo &&
+                      (opt.logoUrl ? (
+                        <OrgLogo
+                          src={opt.logoUrl}
+                          size={20}
+                          className="athlete-comp-filter-logo"
+                        />
+                      ) : (
+                        <span className="athlete-comp-filter-logo athlete-comp-filter-logo--ph" />
+                      ))}
+                    <span className="athlete-comp-filter-option-label">{opt.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
     </div>

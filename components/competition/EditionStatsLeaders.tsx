@@ -6,42 +6,22 @@ import { StatsHighlightCard } from "@/components/competition/StatsHighlightCard"
 import {
   StatsLeaderModal,
   StatsLeaderModalRow,
+  useStatsModalFilters,
 } from "@/components/competition/StatsLeaderModal";
-import { StatsTotwGallery } from "@/components/competition/StatsTotwGallery";
 import { OrgImage } from "@/components/ui/OrgImage";
 import {
   athleteLeaderValue,
   athleteSurname,
-  buildBestDefenseTeams,
-  buildTeamLeaders,
   filterAthleteLeaders,
-  teamLeaderValue,
-  teamShortName,
   type AthleteLeaderValueKey,
-  type TeamLeaderValueKey,
 } from "@/lib/competition/statsHelpers";
-import type {
-  AthleteStatLeader,
-  TeamEditionStats,
-  TotwGalleryEntry,
-} from "@/lib/types";
+import type { AthleteStatLeader, Phase, PlayerPosition } from "@/lib/types";
 
-type ModalState =
-  | {
-      kind: "athlete";
-      title: string;
-      valueKey: AthleteLeaderValueKey;
-      leaders: AthleteStatLeader[];
-    }
-  | {
-      kind: "team";
-      title: string;
-      valueKey: TeamLeaderValueKey;
-      teams: TeamEditionStats[];
-      ascending?: boolean;
-      sub?: (row: TeamEditionStats) => string;
-    }
-  | null;
+type ModalState = {
+  title: string;
+  valueKey: AthleteLeaderValueKey;
+  leaders: AthleteStatLeader[];
+} | null;
 
 interface EditionStatsLeadersProps {
   topScorers: AthleteStatLeader[];
@@ -49,10 +29,34 @@ interface EditionStatsLeadersProps {
   topYellowCards: AthleteStatLeader[];
   topMotm: AthleteStatLeader[];
   topRedCards: AthleteStatLeader[];
-  topTotwSelections: AthleteStatLeader[];
-  teamEditionStats: TeamEditionStats[];
-  totwGallery: TotwGalleryEntry[];
+  phases: Phase[];
   accentColor?: string | null;
+}
+
+function unwrapPosition(
+  positions: PlayerPosition | PlayerPosition[] | null | undefined,
+): PlayerPosition | null {
+  if (!positions) return null;
+  return Array.isArray(positions) ? (positions[0] ?? null) : positions;
+}
+
+function athleteNickname(athlete: AthleteStatLeader["athletes"]): string {
+  if (!athlete) return "—";
+  return (
+    athlete.surname?.trim() ||
+    athlete.full_name?.split(" ").pop()?.trim() ||
+    athlete.full_name
+  );
+}
+
+function athletePositionId(athlete: AthleteStatLeader["athletes"]): string | null {
+  const pos = unwrapPosition(athlete?.player_positions);
+  return pos?.abbreviation?.trim() || pos?.full_name?.trim() || null;
+}
+
+function athletePositionLabel(athlete: AthleteStatLeader["athletes"]): string | null {
+  const pos = unwrapPosition(athlete?.player_positions);
+  return pos?.full_name?.trim() || pos?.abbreviation?.trim() || null;
 }
 
 function athleteRows(
@@ -65,34 +69,15 @@ function athleteRows(
     return {
       key: `${valueKey}-${athlete?.id ?? index}`,
       href: athlete?.id ? `/atletas/${athlete.id}` : undefined,
-      rank: index + 1,
       name: athleteSurname(athlete),
+      nickname: athleteNickname(athlete),
       value: athleteLeaderValue(row, valueKey),
       photoUrl: athlete?.photo_url,
       photoAlt: athleteSurname(athlete),
       teamLogoUrl: team?.logo_url,
       teamAlt: team?.short_name ?? team?.full_name ?? "Time",
-    };
-  });
-}
-
-function teamRows(
-  teams: TeamEditionStats[],
-  valueKey: TeamLeaderValueKey,
-  sub?: (row: TeamEditionStats) => string,
-) {
-  return teams.map((row, index) => {
-    const team = row.teams;
-    return {
-      key: `${valueKey}-${row.team_id}`,
-      href: team?.id ? `/times/${team.id}` : undefined,
-      rank: index + 1,
-      name: teamShortName(team),
-      value: teamLeaderValue(row, valueKey),
-      photoUrl: team?.logo_url,
-      photoAlt: teamShortName(team),
-      sub: sub?.(row),
-      isTeam: true,
+      teamId: team?.id ?? null,
+      positionId: athletePositionId(athlete),
     };
   });
 }
@@ -103,30 +88,12 @@ export function EditionStatsLeaders({
   topYellowCards,
   topMotm,
   topRedCards,
-  topTotwSelections,
-  teamEditionStats,
-  totwGallery,
+  phases,
   accentColor,
 }: EditionStatsLeadersProps) {
   const [modal, setModal] = useState<ModalState>(null);
+  const filters = useStatsModalFilters();
   const accent = accentColor ?? "var(--color-brand)";
-
-  const bestDefense = useMemo(
-    () => buildBestDefenseTeams(teamEditionStats),
-    [teamEditionStats],
-  );
-  const topWins = useMemo(
-    () => buildTeamLeaders(teamEditionStats, "wins"),
-    [teamEditionStats],
-  );
-  const topPoints = useMemo(
-    () => buildTeamLeaders(teamEditionStats, "points"),
-    [teamEditionStats],
-  );
-  const topGoals = useMemo(
-    () => buildTeamLeaders(teamEditionStats, "goals_scored"),
-    [teamEditionStats],
-  );
 
   const athleteCategories: {
     title: string;
@@ -137,212 +104,144 @@ export function EditionStatsLeaders({
     { title: "Assistências", valueKey: "assists", leaders: topAssisters },
     { title: "MOTM", valueKey: "motm_count", leaders: topMotm },
     {
-      title: "Cartões amarelos",
+      title: "Amarelos",
       valueKey: "yellow_cards",
       leaders: topYellowCards,
     },
     {
-      title: "Cartões vermelhos",
+      title: "Vermelhos",
       valueKey: "red_cards",
       leaders: topRedCards,
     },
-    {
-      title: "Seleções TOTW",
-      valueKey: "totw_count",
-      leaders: topTotwSelections,
-    },
   ];
 
-  function renderModalContent() {
-    if (!modal) return null;
-
-    if (modal.kind === "athlete") {
-      const rows = filterAthleteLeaders(modal.leaders, modal.valueKey);
-      return (
-        <ol className="stats-leader-modal-list">
-          {rows.map((row, index) => {
-            const athlete = row.athletes;
-            const team = row.teams;
-            if (!athlete) return null;
-            return (
-              <li key={`modal-${modal.valueKey}-${athlete.id ?? index}`}>
-                <StatsLeaderModalRow
-                  href={athlete.id ? `/atletas/${athlete.id}` : undefined}
-                  rank={index + 1}
-                  isTop={index === 0}
-                  name={athleteSurname(athlete)}
-                  value={athleteLeaderValue(row, modal.valueKey)}
-                  teamLogo={team?.logo_url}
-                  teamAlt={team?.short_name ?? team?.full_name ?? "Time"}
-                  photo={
-                    <OrgImage
-                      src={athlete.photo_url}
-                      alt={athleteSurname(athlete)}
-                      width={36}
-                      height={36}
-                      className="competition-leader-photo"
-                    />
-                  }
-                />
-              </li>
-            );
-          })}
-        </ol>
-      );
+  const teamOptions = useMemo(() => {
+    if (!modal) return [];
+    const map = new Map<string, { label: string; logoUrl: string | null }>();
+    for (const row of filterAthleteLeaders(modal.leaders, modal.valueKey)) {
+      const team = row.teams;
+      if (team?.id) {
+        map.set(team.id, {
+          label: team.short_name?.trim() || team.full_name || "Equipe",
+          logoUrl: team.logo_url ?? null,
+        });
+      }
     }
+    return [...map.entries()]
+      .map(([id, meta]) => ({
+        id,
+        label: meta.label,
+        logoUrl: meta.logoUrl,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+  }, [modal]);
 
-    if (modal.kind === "team") {
-      const rows = modal.ascending
-        ? buildTeamLeaders(modal.teams, modal.valueKey, true)
-        : buildTeamLeaders(modal.teams, modal.valueKey);
-      return (
-        <ol className="stats-leader-modal-list">
-          {rows.map((row, index) => {
-            const team = row.teams;
-            if (!team) return null;
-            return (
-              <li key={`modal-team-${row.team_id}`}>
-                <StatsLeaderModalRow
-                  href={team.id ? `/times/${team.id}` : undefined}
-                  rank={index + 1}
-                  isTop={index === 0}
-                  name={teamShortName(team)}
-                  value={teamLeaderValue(row, modal.valueKey)}
-                  sub={modal.sub?.(row)}
-                  photo={
-                    <OrgImage
-                      src={team.logo_url}
-                      alt={teamShortName(team)}
-                      width={36}
-                      height={36}
-                      className="competition-leader-team-logo-lg"
-                    />
-                  }
-                />
-              </li>
-            );
-          })}
-        </ol>
-      );
+  const positionOptions = useMemo(() => {
+    if (!modal) return [];
+    const map = new Map<string, string>();
+    for (const row of filterAthleteLeaders(modal.leaders, modal.valueKey)) {
+      const id = athletePositionId(row.athletes);
+      const label = athletePositionLabel(row.athletes);
+      if (id && label) map.set(id, label);
     }
+    return [...map.entries()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+  }, [modal]);
 
-    return null;
+  const filteredModalRows = useMemo(() => {
+    if (!modal) return [];
+    return filterAthleteLeaders(modal.leaders, modal.valueKey).filter((row) => {
+      if (filters.teamFilter !== "all" && row.teams?.id !== filters.teamFilter) {
+        return false;
+      }
+      if (filters.positionFilter !== "all") {
+        const pos = athletePositionId(row.athletes);
+        if (pos !== filters.positionFilter) return false;
+      }
+      // Fase: stats são de edição; filtro visual preparado (sem stats por fase ainda).
+      if (filters.phaseFilter !== "all") {
+        return true;
+      }
+      return true;
+    });
+  }, [modal, filters.teamFilter, filters.positionFilter, filters.phaseFilter]);
+
+  function openModal(next: ModalState) {
+    filters.reset();
+    setModal(next);
   }
 
   return (
     <div
-      className="competition-stats-layout"
+      className="competition-stats-layout competition-stats-layout--individual"
       style={{ "--stats-accent": accent } as CSSProperties}
     >
-      <section className="competition-stats-section">
-        <h2 className="competition-stats-section-title">Individuais</h2>
-        <div className="competition-stats-section-1">
-          <div className="competition-stats-cards">
-            {athleteCategories.map((cat) => (
-              <StatsHighlightCard
-                key={cat.valueKey}
-                title={cat.title}
-                accentColor={accentColor}
-                rows={athleteRows(cat.leaders, cat.valueKey)}
-                onVerMais={() =>
-                  setModal({
-                    kind: "athlete",
-                    title: cat.title,
-                    valueKey: cat.valueKey,
-                    leaders: cat.leaders,
-                  })
-                }
-              />
-            ))}
-          </div>
-          <aside className="competition-stats-totw-aside">
-            <StatsTotwGallery
-              entries={totwGallery}
-              accentColor={accentColor}
-            />
-          </aside>
-        </div>
-      </section>
-
-      <section className="competition-stats-section">
-        <h2 className="competition-stats-section-title">Equipes</h2>
-        <div className="competition-stats-section-2">
+      <div className="competition-stats-cards competition-stats-cards--awards">
+        {athleteCategories.map((cat) => (
           <StatsHighlightCard
-            title="Defesa menos vazada"
+            key={cat.valueKey}
+            title={cat.title}
             accentColor={accentColor}
-            rows={teamRows(bestDefense, "goals_conceded", (row) =>
-              `${row.matches_played} J · ${row.goals_conceded} GC`,
-            )}
-            onVerMais={() =>
-              setModal({
-                kind: "team",
-                title: "Defesa menos vazada",
-                valueKey: "goals_conceded",
-                teams: teamEditionStats,
-                ascending: true,
-                sub: (row) => `${row.matches_played} J · ${row.goals_conceded} GC`,
+            rows={athleteRows(cat.leaders, cat.valueKey)}
+            onOpen={() =>
+              openModal({
+                title: cat.title,
+                valueKey: cat.valueKey,
+                leaders: cat.leaders,
               })
             }
           />
-          <StatsHighlightCard
-            title="Vitórias"
-            accentColor={accentColor}
-            rows={teamRows(topWins, "wins", (row) =>
-              `${row.matches_played} J · ${row.points} PTS`,
-            )}
-            onVerMais={() =>
-              setModal({
-                kind: "team",
-                title: "Vitórias",
-                valueKey: "wins",
-                teams: teamEditionStats,
-                sub: (row) => `${row.matches_played} J · ${row.points} PTS`,
-              })
-            }
-          />
-          <StatsHighlightCard
-            title="Pontos"
-            accentColor={accentColor}
-            rows={teamRows(topPoints, "points", (row) =>
-              `${row.wins} V · ${row.matches_played} J`,
-            )}
-            onVerMais={() =>
-              setModal({
-                kind: "team",
-                title: "Pontos",
-                valueKey: "points",
-                teams: teamEditionStats,
-                sub: (row) => `${row.wins} V · ${row.matches_played} J`,
-              })
-            }
-          />
-          <StatsHighlightCard
-            title="Gols marcados"
-            accentColor={accentColor}
-            rows={teamRows(topGoals, "goals_scored", (row) =>
-              `${row.matches_played} J`,
-            )}
-            onVerMais={() =>
-              setModal({
-                kind: "team",
-                title: "Gols marcados",
-                valueKey: "goals_scored",
-                teams: teamEditionStats,
-                sub: (row) => `${row.matches_played} J`,
-              })
-            }
-          />
-        </div>
-      </section>
+        ))}
+      </div>
 
       {modal && (
         <StatsLeaderModal
           title={modal.title}
           accentColor={accentColor}
-          totwGallery={totwGallery}
           onClose={() => setModal(null)}
+          teamOptions={teamOptions}
+          positionOptions={positionOptions}
+          phases={phases}
+          teamFilter={filters.teamFilter}
+          positionFilter={filters.positionFilter}
+          phaseFilter={filters.phaseFilter}
+          onTeamFilter={filters.setTeamFilter}
+          onPositionFilter={filters.setPositionFilter}
+          onPhaseFilter={filters.setPhaseFilter}
         >
-          {renderModalContent()}
+          <ol className="stats-leader-modal-list">
+            {filteredModalRows.map((row, index) => {
+              const athlete = row.athletes;
+              const team = row.teams;
+              if (!athlete) return null;
+              return (
+                <li key={`modal-${modal.valueKey}-${athlete.id ?? index}`}>
+                  <StatsLeaderModalRow
+                    href={athlete.id ? `/atletas/${athlete.id}` : undefined}
+                    name={athleteSurname(athlete)}
+                    value={athleteLeaderValue(row, modal.valueKey)}
+                    teamLogo={team?.logo_url}
+                    teamAlt={team?.short_name ?? team?.full_name ?? "Time"}
+                    photo={
+                      <OrgImage
+                        src={athlete.photo_url}
+                        alt={athleteSurname(athlete)}
+                        width={36}
+                        height={36}
+                        className="competition-leader-photo"
+                      />
+                    }
+                  />
+                </li>
+              );
+            })}
+          </ol>
+          {!filteredModalRows.length ? (
+            <p className="font-mono-label text-xs text-white/40 px-2 py-4">
+              Nenhum atleta com estes filtros.
+            </p>
+          ) : null}
         </StatsLeaderModal>
       )}
     </div>

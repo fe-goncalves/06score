@@ -1,13 +1,13 @@
 import { notFound } from "next/navigation";
 import { ArenasListClient } from "@/components/arenas/ArenasListClient";
-import { SiteListHero } from "@/components/layout/SiteListHero";
 import { getOrgVenues } from "@/lib/data/venue";
+import { metaTitle } from "@/lib/metaTitle";
 import { getOrgSlug, getOrganization } from "@/lib/org";
 
 export async function generateMetadata() {
   const slug = await getOrgSlug();
   const org = await getOrganization(slug);
-  return { title: org ? `${org.name} — Arenas` : "Arenas" };
+  return { title: metaTitle(org ? `${org.name} — ARENAS` : "ARENAS") };
 }
 
 export default async function ArenasPage() {
@@ -18,12 +18,7 @@ export default async function ArenasPage() {
   const venues = await getOrgVenues(org.id);
 
   return (
-    <div className="site-list-page">
-      <SiteListHero
-        eyebrow="Locais"
-        title="Arenas"
-        description={`Onde a ${org.name} acontece — endereços e locais de disputa dos campeonatos.`}
-      />
+    <div className="site-list-page arenas-page">
       <ArenasListClient venues={venues} />
     </div>
   );

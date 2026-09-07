@@ -25,7 +25,7 @@ export function HallCard({ category }: HallCardProps) {
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-black/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D0D] via-black/60 to-transparent" />
         <div className="relative flex h-full min-h-[140px] flex-col justify-end p-4">
           <span className="font-mono-label text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-brand)]">
             {category.label}

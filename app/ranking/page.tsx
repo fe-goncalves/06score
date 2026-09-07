@@ -1,15 +1,14 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getOrgSlug, getOrganization } from "@/lib/org";
-import { SectionTitle } from "@/components/ui/SectionTitle";
 import { RankingClient } from "@/components/ranking/RankingClient";
+import { metaTitle } from "@/lib/metaTitle";
+import { getOrgSlug, getOrganization } from "@/lib/org";
 import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
   const slug = await getOrgSlug();
   const org = await getOrganization(slug);
   return {
-    title: `Ranking${org ? ` · ${org.name}` : ""}`,
+    title: metaTitle(org ? `${org.name} — RANKING` : "RANKING"),
   };
 }
 
@@ -19,15 +18,8 @@ export default async function RankingPage() {
   if (!org) notFound();
 
   return (
-    <main className="page-container py-8 md:py-12">
-      <Link
-        href="/"
-        className="mb-8 inline-block text-xs font-bold uppercase tracking-wider text-white/40 transition-colors hover:text-[var(--color-brand)]"
-      >
-        ← Voltar
-      </Link>
-      <SectionTitle>Ranking</SectionTitle>
+    <div className="site-list-page">
       <RankingClient orgId={org.id} />
-    </main>
+    </div>
   );
 }

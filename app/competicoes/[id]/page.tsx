@@ -5,6 +5,8 @@ import {
   getCachedOrganization,
   getCompetitionTitle,
 } from "@/lib/data/cached";
+import { metaIcons } from "@/lib/metaIcons";
+import { metaTitle } from "@/lib/metaTitle";
 import { getOrgSlug } from "@/lib/org";
 
 interface PageProps {
@@ -12,14 +14,22 @@ interface PageProps {
   searchParams: Promise<{ edition?: string; tab?: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const { edition } = await searchParams;
   const slug = await getOrgSlug();
   const org = await getCachedOrganization(slug);
-  if (!org) return { title: "Competição" };
+  if (!org) return { title: metaTitle("Competição") };
 
-  const title = await getCompetitionTitle(id, org.id);
-  return { title: title ?? "Competição" };
+  const [title, hub] = await Promise.all([
+    getCompetitionTitle(id, org.id, edition),
+    getCachedCompetitionHub(id, org.id, edition),
+  ]);
+
+  return {
+    title: metaTitle(title ?? "Competição"),
+    icons: metaIcons(hub?.competition.logo_url, org.logo_url),
+  };
 }
 
 export default async function CompetitionHubPage({

@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { TeamPageClient } from "@/components/team/TeamPageClient";
 import { getTeamProfile } from "@/lib/data/team";
+import { metaIcons } from "@/lib/metaIcons";
+import { metaTitle } from "@/lib/metaTitle";
 import { getOrgSlug, getOrganization } from "@/lib/org";
 
 interface PageProps {
@@ -11,14 +13,16 @@ export async function generateMetadata({ params }: PageProps) {
   const { id } = await params;
   const slug = await getOrgSlug();
   const org = await getOrganization(slug);
-  if (!org) return { title: "Time" };
+  if (!org) return { title: metaTitle("Time") };
 
   const profile = await getTeamProfile(id, org.id);
+  const raw =
+    profile?.team.short_name?.trim() ||
+    profile?.team.full_name ||
+    "Time";
   return {
-    title:
-      profile?.team.short_name?.trim() ||
-      profile?.team.full_name ||
-      "Time",
+    title: metaTitle(raw),
+    icons: metaIcons(profile?.team.logo_url, org.logo_url),
   };
 }
 

@@ -21,7 +21,7 @@ export function NewsJournalCard({ article, featured = false }: NewsJournalCardPr
     >
       <article>
         <div
-          className={`news-journal-card-list-media news-card-media ${featured ? "aspect-[16/10]" : "aspect-[16/11]"}`}
+          className="news-journal-card-list-media news-card-media aspect-[16/10]"
         >
           <OrgImage
             src={article.cover_url}
